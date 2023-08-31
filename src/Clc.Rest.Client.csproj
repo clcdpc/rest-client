@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<RootNamespace>Clc.Rest</RootNamespace>
+		<Authors>Central Library Consortium, Michael Fields</Authors>
+		<Description>simple http client library</Description>
+		<PackageTags>clc, rest, http</PackageTags>
+		<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+		<Version>2.0.9</Version>
+		<SignAssembly>False</SignAssembly>
+		<IncludeSymbols>True</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PackageId>Clc.Rest.Client</PackageId>
+		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+		<PackageReleaseNotes>add direct methods for get/post/put/patch</PackageReleaseNotes>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+	</ItemGroup>
+
+</Project>
