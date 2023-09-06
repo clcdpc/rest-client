@@ -8,7 +8,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Clc.Rest
 {
@@ -21,23 +20,32 @@ namespace Clc.Rest
         public IAuthenticator Authenticator { get; set; }
         public MediaTypeWithQualityHeaderValue Accept { get; set; } = new MediaTypeWithQualityHeaderValue("application/json");
 
-        protected HttpClient client;
-
-        public RestClient() : this(new HttpClient())
+        private HttpClient _client;
+        private HttpClient Client
         {
+            get
+            {
+                return _client ?? (_client = new HttpClient());
+            }
         }
 
-        public RestClient(HttpClient _client = null)
+        protected RestClient() : this(null, null) { }
+        protected RestClient(string baseUrl) : this(baseUrl, null) { }
+        protected RestClient(HttpClient client) : this(null, client) { }
+
+        protected RestClient(string baseUrl, HttpClient client)
         {
-            client = _client ?? new HttpClient();
+            if (!string.IsNullOrEmpty(baseUrl?.Trim()))
+            {
+                BaseUrl = baseUrl.Trim();
+            }
+            if (client != null)
+            {
+                _client = client;
+            }
         }
 
-        public RestClient(string baseUrl, HttpClient _client = null) : this(_client)
-        {
-            BaseUrl = baseUrl;
-        }
-
-        public  IRestResponse<T> Get<T>(string url, Dictionary<string, string> _params = null) =>
+        public IRestResponse<T> Get<T>(string url, Dictionary<string, string> _params = null) =>
              Execute<T>(new RestRequest(HttpMethod.Get, url, parameters: _params));
 
         public IRestResponse<T> Post<T>(string url, Dictionary<string, string> _params = null, object body = null) =>
@@ -83,7 +91,6 @@ namespace Clc.Rest
 
             return output;
         }
-        
 
         public IRestResponse<T> Execute<T>(RestRequest request)
         {
@@ -102,7 +109,7 @@ namespace Clc.Rest
             try
             {
                 var sw = Stopwatch.StartNew();
-                var _response = client.SendAsync(httpRequest).Result;
+                var _response = Client.SendAsync(httpRequest).Result;
                 response.ResponseTime = sw.ElapsedMilliseconds;
                 response.Response = new HttpResponse(_response);
 
@@ -156,7 +163,7 @@ namespace Clc.Rest
             var authenticator = request.Authenticator ?? Authenticator;
             if (authenticator != null)
             {
-                httpRequest = authenticator.Authenticate(client, httpRequest);
+                httpRequest = authenticator.Authenticate(Client, httpRequest);
             }
 
             return httpRequest;
