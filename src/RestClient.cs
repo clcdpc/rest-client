@@ -21,14 +21,18 @@ namespace Clc.Rest
         public IAuthenticator Authenticator { get; set; }
         public MediaTypeWithQualityHeaderValue Accept { get; set; } = new MediaTypeWithQualityHeaderValue("application/json");
 
-        protected HttpClient client = new HttpClient();
+        protected HttpClient client;
 
-        public RestClient()
+        public RestClient() : this(new HttpClient())
         {
-
         }
 
-        public RestClient(string baseUrl)
+        public RestClient(HttpClient _client = null)
+        {
+            client = _client ?? new HttpClient();
+        }
+
+        public RestClient(string baseUrl, HttpClient _client = null) : this(_client)
         {
             BaseUrl = baseUrl;
         }
