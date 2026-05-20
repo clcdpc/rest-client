@@ -64,7 +64,7 @@ namespace Clc.Rest
             Execute<T>(new RestRequest(method, url, body, _params));
 
         public IRestResponse<T> Execute<T>(string url, HttpMethod method = null, Dictionary<string, string> _params = null, object body = null) =>
-            Execute<T>(new RestRequest(method ?? HttpMethod.Get, url, _params));
+            Execute<T>(new RestRequest(method ?? HttpMethod.Get, url, body, _params));
 
         public virtual T FormatResponse<T>(HttpResponseMessage response)
         {
