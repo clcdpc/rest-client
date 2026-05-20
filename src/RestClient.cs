@@ -181,24 +181,29 @@ namespace Clc.Rest
 
         protected virtual HttpRequestMessage AddParameters(RestRequest request, HttpRequestMessage httpRequest)
         {
-            if (request.Parameters.Any())
+            if (!request.Parameters.Any())
             {
-                if (request.Method == HttpMethod.Get)
-                {
-                    var path = httpRequest.RequestUri.AbsoluteUri.TrimEnd(new[] { '?' }) + "?";
-                    foreach (var qs in request.Parameters)
-                    {
-                        if (!string.IsNullOrWhiteSpace(qs.Value))
-                        {
-                            path += $"{qs.Key}={Uri.EscapeDataString(qs.Value)}&";
-                        }
-                    }
-                    httpRequest.RequestUri = new Uri(path.TrimEnd('&'));
-                }
+                return httpRequest;
+            }
 
-                if (request.Method == HttpMethod.Post && request.Body == null)
+            if (request.Method == HttpMethod.Post && request.Body == null)
+            {
+                httpRequest.Content = new FormUrlEncodedContent(request.Parameters);
+                return httpRequest;
+            }
+
+            if (request.Method != HttpMethod.Post)
+            {
+                var nonEmptyParameters = request.Parameters
+                    .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Key) && !string.IsNullOrWhiteSpace(parameter.Value))
+                    .Select(parameter => $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}")
+                    .ToList();
+
+                if (nonEmptyParameters.Any())
                 {
-                    httpRequest.Content = new FormUrlEncodedContent(request.Parameters);
+                    var separator = httpRequest.RequestUri.Query.Length > 0 ? "&" : "?";
+                    var query = string.Join("&", nonEmptyParameters);
+                    httpRequest.RequestUri = new Uri($"{httpRequest.RequestUri.AbsoluteUri}{separator}{query}");
                 }
             }
 
