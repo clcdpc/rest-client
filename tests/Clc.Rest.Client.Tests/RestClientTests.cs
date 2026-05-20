@@ -119,11 +119,17 @@ public class RestClientTests
         var response = JsonResponse(payload);
 
         if (caseName == "string")
+        {
             Assert.AreEqual("hello", client.FormatResponse<string>(response));
+        }
         else if (caseName == "bool")
+        {
             Assert.IsTrue(client.FormatResponse<bool>(response));
+        }
         else
+        {
             Assert.AreEqual("World", client.FormatResponse<Payload>(response).Name);
+        }
     }
 
     [TestMethod]
