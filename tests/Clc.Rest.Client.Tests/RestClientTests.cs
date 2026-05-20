@@ -111,15 +111,10 @@ public class RestClientTests
         Json
     }
 
-    public static IEnumerable<object[]> FormatResponseCases()
-    {
-        yield return new object[] { FormatResponseCase.String, "hello", "hello" };
-        yield return new object[] { FormatResponseCase.Bool, "ignored", "true" };
-        yield return new object[] { FormatResponseCase.Json, "{\"Name\":\"World\"}", "World" };
-    }
-
     [TestMethod]
-    [DynamicData(nameof(FormatResponseCases))]
+    [DataRow(FormatResponseCase.String, "hello", "hello")]
+    [DataRow(FormatResponseCase.Bool, "ignored", "true")]
+    [DataRow(FormatResponseCase.Json, "{\"Name\":\"World\"}", "World")]
     public void FormatResponse_Returns_Expected_Output(FormatResponseCase caseName, string payload, string expectedValue)
     {
         var client = new TestRestClient(new HttpClient(new FakeHttpMessageHandler(_ => JsonResponse("{}"))));
