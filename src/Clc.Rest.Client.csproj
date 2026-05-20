@@ -7,17 +7,17 @@
 		<Description>simple http client library</Description>
 		<PackageTags>clc, rest, http</PackageTags>
 		<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
-		<Version>2.0.9</Version>
+		<Version>2.2.1-beta</Version>
 		<SignAssembly>False</SignAssembly>
 		<IncludeSymbols>True</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageId>Clc.Rest.Client</PackageId>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-		<PackageReleaseNotes>add direct methods for get/post/put/patch</PackageReleaseNotes>
+		<PackageReleaseNotes>Switch parameter order for async methods</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.*" />
 	</ItemGroup>
 
 </Project>

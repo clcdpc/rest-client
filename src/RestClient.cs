@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Clc.Rest
 {
@@ -21,7 +22,7 @@ namespace Clc.Rest
         public MediaTypeWithQualityHeaderValue Accept { get; set; } = new MediaTypeWithQualityHeaderValue("application/json");
 
         private HttpClient _client;
-        private HttpClient Client
+        protected HttpClient Client
         {
             get
             {
@@ -45,26 +46,33 @@ namespace Clc.Rest
             }
         }
 
-        public IRestResponse<T> Get<T>(string url, Dictionary<string, string> _params = null) =>
-             Execute<T>(new RestRequest(HttpMethod.Get, url, parameters: _params));
+        public IRestResponse<T> Get<T>(string url, Dictionary<string, string> parameters = null) => GetAsync<T>(url, parameters).Result;
+        public async Task<IRestResponse<T>> GetAsync<T>(string url, Dictionary<string, string> parameters = null) => 
+            await ExecuteAsync<T>(new RestRequest(HttpMethod.Get, url, parameters: parameters));
 
-        public IRestResponse<T> Post<T>(string url, Dictionary<string, string> _params = null, object body = null) =>
-             Execute<T>(new RestRequest(HttpMethod.Post, url, body, _params));
+        public IRestResponse<T> Post<T>(string url, Dictionary<string, string> parameters = null, object body = null) => PostAsync<T>(url, body, parameters).Result;
+        public async Task<IRestResponse<T>> PostAsync<T>(string url, object body = null, Dictionary<string, string> parameters = null) =>
+             await ExecuteAsync<T>(new RestRequest(HttpMethod.Post, url, body, parameters));
 
-        public IRestResponse<T> Patch<T>(string url, Dictionary<string, string> _params = null, object body = null) =>
-             Execute<T>(new RestRequest(new HttpMethod("PATCH"), url, body, _params));
+        public IRestResponse<T> Patch<T>(string url, Dictionary<string, string> parameters = null, object body = null) => PatchAsync<T>(url, body, parameters).Result;
+        public async Task<IRestResponse<T>> PatchAsync<T>(string url, object body = null, Dictionary<string, string> parameters = null) =>
+             await ExecuteAsync<T>(new RestRequest(new HttpMethod("PATCH"), url, body, parameters));
 
-        public IRestResponse<T> Put<T>(string url, Dictionary<string, string> _params = null, object body = null) =>
-             Execute<T>(new RestRequest(HttpMethod.Put, url, body, _params));
+        public IRestResponse<T> Put<T>(string url, Dictionary<string, string> parameters = null, object body = null) => PutAsync<T>(url, body, parameters).Result;
+        public async Task<IRestResponse<T>> PutAsync<T>(string url, object body = null, Dictionary<string, string> parameters = null) =>
+             await ExecuteAsync<T>(new RestRequest(HttpMethod.Put, url, body, parameters));
 
-        public IRestResponse<T> Delete<T>(string url, Dictionary<string, string> _params = null, object body = null) =>
-             Execute<T>(new RestRequest(HttpMethod.Delete, url, body, _params));
+        public IRestResponse<T> Delete<T>(string url, Dictionary<string, string> parameters = null, object body = null) => DeleteAsync<T>(url, body, parameters).Result;
+        public async Task<IRestResponse<T>> DeleteAsync<T>(string url, object body = null, Dictionary<string, string> parameters = null) =>
+             await ExecuteAsync<T>(new RestRequest(HttpMethod.Delete, url, body, parameters));
 
-        public IRestResponse<T> Execute<T>(HttpMethod method, string url, Dictionary<string, string> _params = null, object body = null) =>
-            Execute<T>(new RestRequest(method, url, body, _params));
+        public IRestResponse<T> Execute<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null) => ExecuteAsync<T>(method, url, parameters, body).Result;
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null) =>
+            await ExecuteAsync<T>(new RestRequest(method, url, body, parameters));
 
-        public IRestResponse<T> Execute<T>(string url, HttpMethod method = null, Dictionary<string, string> _params = null, object body = null) =>
-            Execute<T>(new RestRequest(method ?? HttpMethod.Get, url, _params));
+        public IRestResponse<T> Execute<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null) => ExecuteAsync<T>(url, method, parameters, body).Result;
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null) =>
+            await ExecuteAsync<T>(new RestRequest(method ?? HttpMethod.Get, url, body, parameters));
 
         public virtual T FormatResponse<T>(HttpResponseMessage response)
         {
@@ -92,7 +100,7 @@ namespace Clc.Rest
             return output;
         }
 
-        public IRestResponse<T> Execute<T>(RestRequest request)
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(RestRequest request)
         {
             PreformatRestRequest(request);
 
@@ -109,7 +117,7 @@ namespace Clc.Rest
             try
             {
                 var sw = Stopwatch.StartNew();
-                var _response = Client.SendAsync(httpRequest).Result;
+                var _response = await Client.SendAsync(httpRequest);
                 response.ResponseTime = sw.ElapsedMilliseconds;
                 response.Response = new HttpResponse(_response);
 
@@ -129,6 +137,8 @@ namespace Clc.Rest
 
             return response;
         }
+
+        public IRestResponse<T> Execute<T>(RestRequest request) => ExecuteAsync<T>(request).Result;
 
         public virtual RestRequest PreformatRestRequest(RestRequest request) => request;
         public virtual string PreDeserialize(string responseBody) => responseBody;
