@@ -9,6 +9,8 @@ namespace Clc.Rest.Client.Tests;
 [TestClass]
 public class RestClientTests
 {
+    public required TestContext TestContext { get; set; }
+
     [TestMethod]
     public async Task Execute_Forwards_Body_And_Parameters_Correctly()
     {
@@ -20,8 +22,8 @@ public class RestClientTests
         var response = await client.ExecuteAsync<Dictionary<string, object>>("/resource", HttpMethod.Post, parameters, body);
 
         Assert.AreEqual(HttpMethod.Post, handler.LastRequest!.Method);
-        Assert.AreEqual("{\"Name\":\"Alice\"}", await handler.LastRequest.Content!.ReadAsStringAsync());
-        StringAssert.StartsWith(handler.LastRequest.RequestUri!.AbsoluteUri, "https://example.test/resource");
+        Assert.AreEqual("{\"Name\":\"Alice\"}", await handler.LastRequest.Content!.ReadAsStringAsync(TestContext.CancellationToken));
+        Assert.StartsWith(handler.LastRequest.RequestUri!.AbsoluteUri, "https://example.test/resource");
         Assert.IsNotNull(response.Data);
     }
 
@@ -38,9 +40,9 @@ public class RestClientTests
         });
 
         var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
-        StringAssert.StartsWith(uri, "https://example.test/search?");
-        StringAssert.Contains(uri, "q=value");
-        StringAssert.Contains(uri, "n=10");
+        Assert.StartsWith(uri, "https://example.test/search?");
+        Assert.Contains(uri, "q=value");
+        Assert.Contains(uri, "n=10");
     }
 
     [TestMethod]
@@ -51,8 +53,8 @@ public class RestClientTests
 
         await client.ExecuteAsync<string>("/post", HttpMethod.Post, new Dictionary<string, string> { ["a"] = "b" }, new { Id = 42 });
 
-        var sentBody = await handler.LastRequest!.Content!.ReadAsStringAsync();
-        StringAssert.Contains(sentBody, "\"Id\":42");
+        var sentBody = await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken);
+        Assert.Contains(sentBody, "\"Id\":42");
         Assert.AreEqual("application/json; charset=utf-8", handler.LastRequest.Content.Headers.ContentType!.ToString());
     }
 
@@ -69,12 +71,12 @@ public class RestClientTests
         });
 
         Assert.AreEqual("application/x-www-form-urlencoded", handler.LastRequest!.Content!.Headers.ContentType!.MediaType);
-        var payload = await handler.LastRequest.Content.ReadAsStringAsync();
-        StringAssert.Contains(payload, "first=one");
-        StringAssert.Contains(payload, "second=two");
+        var payload = await handler.LastRequest.Content.ReadAsStringAsync(TestContext.CancellationToken);
+        Assert.Contains(payload, "first=one");
+        Assert.Contains(payload, "second=two");
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("q", "hello world", "q=hello%20world")]
     [DataRow("tag", "a&b=c", "tag=a%26b%3Dc")]
     public async Task Get_Encodes_Query_String_Values(string key, string value, string expectedFragment)
@@ -88,7 +90,7 @@ public class RestClientTests
         });
 
         var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
-        StringAssert.Contains(uri, expectedFragment);
+        Assert.Contains(uri, expectedFragment);
     }
 
     [TestMethod]
@@ -104,20 +106,27 @@ public class RestClientTests
 
     public static IEnumerable<object[]> FormatResponseCases()
     {
-        yield return new object[] { "string", "hello", (Action<TestRestClient, HttpResponseMessage>)( (client, response) => Assert.AreEqual("hello", client.FormatResponse<string>(response))) };
-        yield return new object[] { "bool", "ignored", (Action<TestRestClient, HttpResponseMessage>)( (client, response) => Assert.IsTrue(client.FormatResponse<bool>(response))) };
-        yield return new object[] { "json", "{\"Name\":\"World\"}", (Action<TestRestClient, HttpResponseMessage>)( (client, response) => Assert.AreEqual("World", client.FormatResponse<Payload>(response).Name)) };
+        yield return new object[] { "string", "hello" };
+        yield return new object[] { "bool", "ignored" };
+        yield return new object[] { "json", "{\"Name\":\"World\"}" };
     }
 
-    [DataTestMethod]
-    [DynamicData(nameof(FormatResponseCases), DynamicDataSourceType.Method)]
-    public void FormatResponse_Returns_Expected_Output(string _case, string payload, Action<TestRestClient, HttpResponseMessage> assertResult)
+    [TestMethod]
+    [DynamicData(nameof(FormatResponseCases))]
+    public void FormatResponse_Returns_Expected_Output(string caseName, string payload)
     {
-        var client = new TestRestClient();
-        assertResult(client, JsonResponse(payload));
+        var client = new TestRestClient(new HttpClient(new FakeHttpMessageHandler(_ => JsonResponse("{}"))));
+        var response = JsonResponse(payload);
+
+        if (caseName == "string")
+            Assert.AreEqual("hello", client.FormatResponse<string>(response));
+        else if (caseName == "bool")
+            Assert.IsTrue(client.FormatResponse<bool>(response));
+        else
+            Assert.AreEqual("World", client.FormatResponse<Payload>(response).Name);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(true)]
     [DataRow(false)]
     public void ToString_Does_Not_Throw_When_Data_Or_Content_Is_Null(bool useRestResponse)
