@@ -60,7 +60,7 @@ namespace Clc.Rest.Models
         /// <returns></returns>
         public override string ToString()
         {
-            return Data.ToString();
+            return Data?.ToString() ?? string.Empty;
         }
     }
 }

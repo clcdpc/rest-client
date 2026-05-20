@@ -196,7 +196,7 @@ namespace Clc.Rest
                     httpRequest.RequestUri = new Uri(path.TrimEnd('&'));
                 }
 
-                if (request.Method == HttpMethod.Post)
+                if (request.Method == HttpMethod.Post && request.Body == null)
                 {
                     httpRequest.Content = new FormUrlEncodedContent(request.Parameters);
                 }

@@ -82,7 +82,7 @@ namespace Clc.Rest.Models
         /// <returns></returns>
         public override string ToString()
         {
-            return $"StatusCode: {StatusCode}, Content-Type: {ContentType}, Content-Length: {Content.Length}";
+            return $"StatusCode: {StatusCode}, Content-Type: {ContentType}, Content-Length: {(Content?.Length ?? 0)}";
         }
     }
 }
