@@ -104,31 +104,38 @@ public class RestClientTests
         Assert.AreEqual("{\"message\":\"ok\"}", response.Response.Content);
     }
 
+    private enum FormatResponseCase
+    {
+        String,
+        Bool,
+        Json
+    }
+
     public static IEnumerable<object[]> FormatResponseCases()
     {
-        yield return new object[] { "string", "hello" };
-        yield return new object[] { "bool", "ignored" };
-        yield return new object[] { "json", "{\"Name\":\"World\"}" };
+        yield return new object[] { FormatResponseCase.String, "hello", "hello" };
+        yield return new object[] { FormatResponseCase.Bool, "ignored", "true" };
+        yield return new object[] { FormatResponseCase.Json, "{\"Name\":\"World\"}", "World" };
     }
 
     [TestMethod]
     [DynamicData(nameof(FormatResponseCases))]
-    public void FormatResponse_Returns_Expected_Output(string caseName, string payload)
+    public void FormatResponse_Returns_Expected_Output(FormatResponseCase caseName, string payload, string expectedValue)
     {
         var client = new TestRestClient(new HttpClient(new FakeHttpMessageHandler(_ => JsonResponse("{}"))));
         var response = JsonResponse(payload);
 
-        if (caseName == "string")
+        if (caseName == FormatResponseCase.String)
         {
-            Assert.AreEqual("hello", client.FormatResponse<string>(response));
+            Assert.AreEqual(expectedValue, client.FormatResponse<string>(response));
         }
-        else if (caseName == "bool")
+        else if (caseName == FormatResponseCase.Bool)
         {
-            Assert.IsTrue(client.FormatResponse<bool>(response));
+            Assert.AreEqual(bool.Parse(expectedValue), client.FormatResponse<bool>(response));
         }
         else
         {
-            Assert.AreEqual("World", client.FormatResponse<Payload>(response).Name);
+            Assert.AreEqual(expectedValue, client.FormatResponse<Payload>(response).Name);
         }
     }
 
