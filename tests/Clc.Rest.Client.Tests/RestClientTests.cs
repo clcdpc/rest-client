@@ -23,7 +23,7 @@ public class RestClientTests
 
         Assert.AreEqual(HttpMethod.Post, handler.LastRequest!.Method);
         Assert.AreEqual("{\"Name\":\"Alice\"}", await handler.LastRequest.Content!.ReadAsStringAsync(TestContext.CancellationToken));
-        Assert.StartsWith(handler.LastRequest.RequestUri!.AbsoluteUri, "https://example.test/resource");
+        Assert.StartsWith("https://example.test/resource", handler.LastRequest.RequestUri!.AbsoluteUri);
         Assert.IsNotNull(response.Data);
     }
 
@@ -40,9 +40,9 @@ public class RestClientTests
         });
 
         var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
-        Assert.StartsWith(uri, "https://example.test/search?");
-        Assert.Contains(uri, "q=value");
-        Assert.Contains(uri, "n=10");
+        Assert.StartsWith("https://example.test/search?", uri);
+        Assert.Contains("q=value", uri);
+        Assert.Contains("n=10", uri);
     }
 
     [TestMethod]
@@ -54,7 +54,7 @@ public class RestClientTests
         await client.ExecuteAsync<string>("/post", HttpMethod.Post, new Dictionary<string, string> { ["a"] = "b" }, new { Id = 42 });
 
         var sentBody = await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken);
-        Assert.Contains(sentBody, "\"Id\":42");
+        Assert.Contains("\"Id\":42", sentBody);
         Assert.AreEqual("application/json; charset=utf-8", handler.LastRequest.Content.Headers.ContentType!.ToString());
     }
 
@@ -72,8 +72,8 @@ public class RestClientTests
 
         Assert.AreEqual("application/x-www-form-urlencoded", handler.LastRequest!.Content!.Headers.ContentType!.MediaType);
         var payload = await handler.LastRequest.Content.ReadAsStringAsync(TestContext.CancellationToken);
-        Assert.Contains(payload, "first=one");
-        Assert.Contains(payload, "second=two");
+        Assert.Contains("first=one", payload);
+        Assert.Contains("second=two", payload);
     }
 
     [TestMethod]
@@ -90,7 +90,7 @@ public class RestClientTests
         });
 
         var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
-        Assert.Contains(uri, expectedFragment);
+        Assert.Contains(expectedFragment, uri);
     }
 
     [TestMethod]
