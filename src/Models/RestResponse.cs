@@ -51,7 +51,13 @@ namespace Clc.Rest.Models
         public RestResponse(HttpRequestMessage request)
         {
             Request = request;
-            BodyString = request?.Content?.ReadAsStringAsync()?.Result;
+            BodyString = ReadBodySynchronously(request);
+        }
+
+        public RestResponse(HttpRequestMessage request, string bodyString)
+        {
+            Request = request;
+            BodyString = bodyString;
         }
 
         /// <summary>
@@ -61,6 +67,13 @@ namespace Clc.Rest.Models
         public override string ToString()
         {
             return Data?.ToString() ?? string.Empty;
+        }
+
+        private static string ReadBodySynchronously(HttpRequestMessage request)
+        {
+            return request?.Content == null
+                ? null
+                : request.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
         }
     }
 }

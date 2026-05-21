@@ -65,8 +65,13 @@ namespace Clc.Rest.Models
         /// </summary>
         /// <param name="response"></param>
         public HttpResponse(HttpResponseMessage response)
+            : this(response, ReadContentSynchronously(response))
         {
-            Content = response.Content.ReadAsStringAsync().Result;
+        }
+
+        public HttpResponse(HttpResponseMessage response, string content)
+        {
+            Content = content;
             ContentType = response.Content?.Headers?.ContentType?.ToString() ?? "";
             Headers = response.Headers;
             IsSuccessStatusCode = response.IsSuccessStatusCode;
@@ -74,6 +79,13 @@ namespace Clc.Rest.Models
             RequestMessage = response.RequestMessage;
             StatusCode = response.StatusCode;
             Version = response.Version;
+        }
+
+        private static string ReadContentSynchronously(HttpResponseMessage response)
+        {
+            return response.Content == null
+                ? string.Empty
+                : response.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         /// <summary>

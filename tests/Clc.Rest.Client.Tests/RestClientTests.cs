@@ -155,6 +155,70 @@ public class RestClientTests
         Assert.AreEqual("{\"message\":\"ok\"}", response.Response.Content);
     }
 
+    [TestMethod]
+    public async Task ExecuteAsync_String_Response_Uses_Raw_Body()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("plain-text"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>("/data");
+
+        Assert.AreEqual("plain-text", response.Data);
+        Assert.AreEqual("plain-text", response.Response.Content);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Bool_Response_Reflects_Success_Status()
+    {
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("ignored", Encoding.UTF8, "text/plain")
+        });
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<bool>("/data");
+
+        Assert.IsTrue(response.Data);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Uses_Same_Content_For_Metadata_And_Deserialization()
+    {
+        var payload = "{\"Name\":\"FromBody\"}";
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse(payload));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<Payload>("/data");
+
+        Assert.AreEqual(payload, response.Response.Content);
+        Assert.AreEqual("FromBody", response.Data.Name);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Request_BodyString_Is_Captured()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>("/post", HttpMethod.Post, body: new { Name = "Alice" });
+
+        Assert.AreEqual("{\"Name\":\"Alice\"}", response.BodyString);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Response_Content_Is_Read_Only_Once()
+    {
+        var content = new SingleReadTrackingContent("{\"Name\":\"Once\"}");
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<Payload>("/data");
+
+        Assert.AreEqual(1, content.ReadCount);
+        Assert.AreEqual("Once", response.Data.Name);
+        Assert.AreEqual("{\"Name\":\"Once\"}", response.Response.Content);
+    }
+
     public enum FormatResponseCase
     {
         String,
@@ -226,5 +290,16 @@ public class RestClientTests
     private sealed class Payload
     {
         public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class SingleReadTrackingContent(string body) : StringContent(body, Encoding.UTF8, "application/json")
+    {
+        public int ReadCount { get; private set; }
+
+        protected override Task<Stream> CreateContentReadStreamAsync()
+        {
+            ReadCount++;
+            return base.CreateContentReadStreamAsync();
+        }
     }
 }
