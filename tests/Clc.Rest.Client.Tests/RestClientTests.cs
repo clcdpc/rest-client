@@ -155,7 +155,7 @@ public class RestClientTests
         Assert.AreEqual("{\"message\":\"ok\"}", response.Response.Content);
     }
 
-    private enum FormatResponseCase
+    public enum FormatResponseCase
     {
         String,
         Bool,
