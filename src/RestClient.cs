@@ -80,7 +80,9 @@ namespace Clc.Rest
 
             if (response.IsSuccessStatusCode)
             {
-                var content = response.Content.ReadAsStringAsync().Result;
+                var content = response.Content == null
+                    ? string.Empty
+                    : response.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
                 content = PreDeserialize(content);
 
                 if (typeof(T) == typeof(string))
@@ -156,6 +158,10 @@ namespace Clc.Rest
                 {
                     response.Data = (T)request.FormatOutput(_response);
                 }
+                else if (IsFormatResponseOverridden())
+                {
+                    response.Data = FormatResponse<T>(_response);
+                }
                 else
                 {
                     response.Data = await FormatResponseAsync<T>(_response, responseContent).ConfigureAwait(false);
@@ -170,6 +176,12 @@ namespace Clc.Rest
         }
 
         public IRestResponse<T> Execute<T>(RestRequest request) => ExecuteAsync<T>(request).Result;
+
+        private bool IsFormatResponseOverridden()
+        {
+            var method = GetType().GetMethod(nameof(FormatResponse), new[] { typeof(HttpResponseMessage) });
+            return method?.DeclaringType != typeof(RestClient);
+        }
 
         public virtual RestRequest PreformatRestRequest(RestRequest request) => request;
         public virtual string PreDeserialize(string responseBody) => responseBody;
