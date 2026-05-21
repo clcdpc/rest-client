@@ -111,6 +111,39 @@ public class RestClientTests
         Assert.Contains("new%20key=new%20value", uri);
     }
 
+
+    [TestMethod]
+    public async Task NonPost_With_Fragment_Appends_Query_Before_Fragment()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        await client.ExecuteAsync<string>("/resource#frag", HttpMethod.Put, new Dictionary<string, string>
+        {
+            ["x"] = "1"
+        });
+
+        Assert.AreEqual("https://example.test/resource?x=1#frag", handler.LastRequest!.RequestUri!.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public async Task NonPost_With_Relative_Uri_Uses_BaseAddress_And_Appends_Query()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://example.test/")
+        };
+        var client = new TestRestClient(httpClient) { BaseUrl = string.Empty };
+
+        await client.ExecuteAsync<string>("relative/path", HttpMethod.Delete, new Dictionary<string, string>
+        {
+            ["x"] = "1"
+        });
+
+        Assert.AreEqual("https://example.test/relative/path?x=1", handler.LastRequest!.RequestUri!.AbsoluteUri);
+    }
+
     [TestMethod]
     public async Task Response_Content_Available_In_RestResponse_Response_Content()
     {

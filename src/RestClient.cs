@@ -201,13 +201,33 @@ namespace Clc.Rest
 
                 if (nonEmptyParameters.Any())
                 {
-                    var separator = httpRequest.RequestUri.Query.Length > 0 ? "&" : "?";
-                    var query = string.Join("&", nonEmptyParameters);
-                    httpRequest.RequestUri = new Uri($"{httpRequest.RequestUri.AbsoluteUri}{separator}{query}");
+                    httpRequest.RequestUri = AppendQueryString(httpRequest.RequestUri, string.Join("&", nonEmptyParameters));
                 }
             }
 
             return httpRequest;
         }
+
+        private Uri AppendQueryString(Uri requestUri, string queryToAppend)
+        {
+            if (requestUri.IsAbsoluteUri)
+            {
+                var uriBuilder = new UriBuilder(requestUri);
+                var existingQuery = uriBuilder.Query.TrimStart('?');
+                uriBuilder.Query = string.IsNullOrEmpty(existingQuery)
+                    ? queryToAppend
+                    : $"{existingQuery}&{queryToAppend}";
+                return uriBuilder.Uri;
+            }
+
+            var originalUri = requestUri.OriginalString;
+            var fragmentIndex = originalUri.IndexOf('#');
+            var pathAndQuery = fragmentIndex >= 0 ? originalUri.Substring(0, fragmentIndex) : originalUri;
+            var fragment = fragmentIndex >= 0 ? originalUri.Substring(fragmentIndex) : string.Empty;
+
+            var separator = pathAndQuery.Contains("?") ? "&" : "?";
+            return new Uri($"{pathAndQuery}{separator}{queryToAppend}{fragment}", UriKind.Relative);
+        }
+
     }
 }
