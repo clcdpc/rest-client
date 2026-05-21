@@ -76,11 +76,16 @@ namespace Clc.Rest
 
         public virtual T FormatResponse<T>(HttpResponseMessage response)
         {
+            var content = response.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            return FormatResponse(response, content);
+        }
+
+        protected virtual T FormatResponse<T>(HttpResponseMessage response, string content)
+        {
             T output = default;
 
             if (response.IsSuccessStatusCode)
             {
-                var content = response.Content.ReadAsStringAsync().Result;
                 content = PreDeserialize(content);
 
                 if (typeof(T) == typeof(string))
@@ -112,14 +117,17 @@ namespace Clc.Rest
             AddBody(request, httpRequest);
             AddParameters(request, httpRequest);
 
-            var response = new RestResponse<T>(httpRequest);
+            var response = await RestResponse<T>.CreateAsync(httpRequest).ConfigureAwait(false);
 
             try
             {
                 var sw = Stopwatch.StartNew();
-                var _response = await Client.SendAsync(httpRequest);
+                var _response = await Client.SendAsync(httpRequest).ConfigureAwait(false);
+                var responseContent = _response.Content == null
+                    ? string.Empty
+                    : await _response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 response.ResponseTime = sw.ElapsedMilliseconds;
-                response.Response = new HttpResponse(_response);
+                response.Response = new HttpResponse(_response, responseContent);
 
                 if (request.FormatOutput != null)
                 {
@@ -127,7 +135,7 @@ namespace Clc.Rest
                 }
                 else
                 {
-                    response.Data = FormatResponse<T>(_response);
+                    response.Data = FormatResponse(_response, responseContent);
                 }
             }
             catch (Exception ex)
@@ -138,7 +146,7 @@ namespace Clc.Rest
             return response;
         }
 
-        public IRestResponse<T> Execute<T>(RestRequest request) => ExecuteAsync<T>(request).Result;
+        public IRestResponse<T> Execute<T>(RestRequest request) => ExecuteAsync<T>(request).ConfigureAwait(false).GetAwaiter().GetResult();
 
         public virtual RestRequest PreformatRestRequest(RestRequest request) => request;
         public virtual string PreDeserialize(string responseBody) => responseBody;

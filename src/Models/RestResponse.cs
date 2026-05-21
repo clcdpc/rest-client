@@ -51,7 +51,22 @@ namespace Clc.Rest.Models
         public RestResponse(HttpRequestMessage request)
         {
             Request = request;
-            BodyString = request?.Content?.ReadAsStringAsync()?.Result;
+            BodyString = request?.Content?.ReadAsStringAsync()?.ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+
+        public static async Task<RestResponse<T>> CreateAsync(HttpRequestMessage request)
+        {
+            var response = new RestResponse<T>
+            {
+                Request = request
+            };
+
+            if (request?.Content != null)
+            {
+                response.BodyString = await request.Content.ReadAsStringAsync().ConfigureAwait(false);
+            }
+
+            return response;
         }
 
         /// <summary>

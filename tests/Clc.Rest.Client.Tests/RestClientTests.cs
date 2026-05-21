@@ -155,6 +155,66 @@ public class RestClientTests
         Assert.AreEqual("{\"message\":\"ok\"}", response.Response.Content);
     }
 
+    [TestMethod]
+    public async Task ExecuteAsync_Deserializes_Data_From_Same_Content_String()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{\"Name\":\"Shared\"}"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<Payload>("/data");
+
+        Assert.AreEqual("Shared", response.Data.Name);
+        Assert.AreEqual("{\"Name\":\"Shared\"}", response.Response.Content);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_String_Response_Returns_Raw_Body()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("raw-body"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>("/data");
+
+        Assert.AreEqual("raw-body", response.Data);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Bool_Response_Reflects_Success_Status()
+    {
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NoContent));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<bool>("/data");
+
+        Assert.IsTrue(response.Data);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Captures_Request_BodyString_When_Content_Exists()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>("/data", HttpMethod.Post, body: new { Name = "Body" });
+
+        Assert.AreEqual("{\"Name\":\"Body\"}", response.BodyString);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Reads_Response_Content_Only_Once()
+    {
+        var handler = new FakeHttpMessageHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new CountingContent("{\"Name\":\"Once\"}") });
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<Payload>("/data");
+        var countingContent = (CountingContent)handler.LastResponse!.Content!;
+
+        Assert.AreEqual(1, countingContent.ReadCount);
+        Assert.AreEqual("Once", response.Data.Name);
+        Assert.AreEqual("{\"Name\":\"Once\"}", response.Response.Content);
+    }
+
     public enum FormatResponseCase
     {
         String,
@@ -211,11 +271,13 @@ public class RestClientTests
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _callback = callback;
         public HttpRequestMessage? LastRequest { get; private set; }
+        public HttpResponseMessage? LastResponse { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequest = request;
-            return Task.FromResult(_callback(request));
+            LastResponse = _callback(request);
+            return Task.FromResult(LastResponse);
         }
     }
 
@@ -226,5 +288,29 @@ public class RestClientTests
     private sealed class Payload
     {
         public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class CountingContent(string value) : HttpContent
+    {
+        private readonly string _value = value;
+        public int ReadCount { get; private set; }
+
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            throw new NotSupportedException();
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = _value.Length;
+            return true;
+        }
+
+        protected override Task<Stream> CreateContentReadStreamAsync()
+        {
+            ReadCount++;
+            var bytes = Encoding.UTF8.GetBytes(_value);
+            return Task.FromResult<Stream>(new MemoryStream(bytes));
+        }
     }
 }
