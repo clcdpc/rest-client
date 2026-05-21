@@ -179,7 +179,15 @@ namespace Clc.Rest
 
         private bool IsFormatResponseOverridden()
         {
-            var method = GetType().GetMethod(nameof(FormatResponse), new[] { typeof(HttpResponseMessage) });
+            var method = GetType()
+                .GetMethods()
+                .FirstOrDefault(m =>
+                    m.Name == nameof(FormatResponse)
+                    && m.IsGenericMethod
+                    && m.GetGenericArguments().Length == 1
+                    && m.GetParameters().Length == 1
+                    && m.GetParameters()[0].ParameterType == typeof(HttpResponseMessage));
+
             return method?.DeclaringType != typeof(RestClient);
         }
 
