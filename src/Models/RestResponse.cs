@@ -51,7 +51,13 @@ namespace Clc.Rest.Models
         public RestResponse(HttpRequestMessage request)
         {
             Request = request;
-            BodyString = request?.Content?.ReadAsStringAsync()?.Result;
+            BodyString = request?.Content?.ReadAsStringAsync()?.GetAwaiter().GetResult();
+        }
+
+        public RestResponse(HttpRequestMessage request, string bodyString)
+        {
+            Request = request;
+            BodyString = bodyString;
         }
 
         /// <summary>

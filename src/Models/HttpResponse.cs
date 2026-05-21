@@ -66,7 +66,19 @@ namespace Clc.Rest.Models
         /// <param name="response"></param>
         public HttpResponse(HttpResponseMessage response)
         {
-            Content = response.Content.ReadAsStringAsync().Result;
+            Content = response.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+            ContentType = response.Content?.Headers?.ContentType?.ToString() ?? "";
+            Headers = response.Headers;
+            IsSuccessStatusCode = response.IsSuccessStatusCode;
+            ReasonPhrase = response.ReasonPhrase;
+            RequestMessage = response.RequestMessage;
+            StatusCode = response.StatusCode;
+            Version = response.Version;
+        }
+
+        public HttpResponse(HttpResponseMessage response, string content)
+        {
+            Content = content;
             ContentType = response.Content?.Headers?.ContentType?.ToString() ?? "";
             Headers = response.Headers;
             IsSuccessStatusCode = response.IsSuccessStatusCode;
