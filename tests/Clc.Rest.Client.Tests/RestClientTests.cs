@@ -12,54 +12,20 @@ public class RestClientTests
     public required TestContext TestContext { get; set; }
 
     [TestMethod]
-    public async Task Execute_Forwards_Body_And_Parameters_Correctly()
+    public async Task Post_With_Body_Preserves_Serialized_Body()
     {
-        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{\"ok\":true}"));
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
-        var body = new { Name = "Alice" };
-        var parameters = new Dictionary<string, string> { ["x"] = "1" };
 
-        var response = await client.ExecuteAsync<Dictionary<string, object>>("/resource", HttpMethod.Post, parameters, body);
+        await client.ExecuteAsync<string>("/post", HttpMethod.Post, body: new { Name = "Alice" });
 
         Assert.AreEqual(HttpMethod.Post, handler.LastRequest!.Method);
         Assert.AreEqual("{\"Name\":\"Alice\"}", await handler.LastRequest.Content!.ReadAsStringAsync(TestContext.CancellationToken));
-        Assert.StartsWith("https://example.test/resource", handler.LastRequest.RequestUri!.AbsoluteUri);
-        Assert.IsNotNull(response.Data);
-    }
-
-    [TestMethod]
-    public async Task Get_Appends_Query_Parameters()
-    {
-        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
-        var client = CreateClient(handler);
-
-        await client.ExecuteAsync<string>("/search", HttpMethod.Get, new Dictionary<string, string>
-        {
-            ["q"] = "value",
-            ["n"] = "10"
-        });
-
-        var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
-        Assert.StartsWith("https://example.test/search?", uri);
-        Assert.Contains("q=value", uri);
-        Assert.Contains("n=10", uri);
-    }
-
-    [TestMethod]
-    public async Task Post_With_Json_Body_Does_Not_Lose_Body()
-    {
-        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
-        var client = CreateClient(handler);
-
-        await client.ExecuteAsync<string>("/post", HttpMethod.Post, new Dictionary<string, string> { ["a"] = "b" }, new { Id = 42 });
-
-        var sentBody = await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken);
-        Assert.Contains("\"Id\":42", sentBody);
         Assert.AreEqual("application/json; charset=utf-8", handler.LastRequest.Content.Headers.ContentType!.ToString());
     }
 
     [TestMethod]
-    public async Task Post_With_Form_Parameters_Uses_FormUrlEncoded_When_No_Body()
+    public async Task Post_With_Parameters_And_No_Body_Uses_FormUrlEncodedContent()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
@@ -77,20 +43,105 @@ public class RestClientTests
     }
 
     [TestMethod]
-    [DataRow("q", "hello world", "q=hello%20world")]
-    [DataRow("tag", "a&b=c", "tag=a%26b%3Dc")]
-    public async Task Get_Encodes_Query_String_Values(string key, string value, string expectedFragment)
+    public async Task Post_With_Body_And_Parameters_Does_Not_Overwrite_Body()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        await client.ExecuteAsync<string>("/post", HttpMethod.Post, new Dictionary<string, string> { ["a"] = "b" }, new { Id = 42 });
+
+        var sentBody = await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken);
+        Assert.Contains("\"Id\":42", sentBody);
+        Assert.DoesNotContain("a=b", sentBody);
+        Assert.AreEqual("application/json; charset=utf-8", handler.LastRequest.Content.Headers.ContentType!.ToString());
+    }
+
+    [TestMethod]
+    public async Task Get_With_Parameters_Appends_Query_String()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
         await client.ExecuteAsync<string>("/search", HttpMethod.Get, new Dictionary<string, string>
         {
-            [key] = value
+            ["q"] = "value",
+            ["n"] = "10"
         });
 
         var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
-        Assert.Contains(expectedFragment, uri);
+        Assert.StartsWith("https://example.test/search?", uri);
+        Assert.Contains("q=value", uri);
+        Assert.Contains("n=10", uri);
+    }
+
+    [TestMethod]
+    [DataRow("GET")]
+    [DataRow("PUT")]
+    [DataRow("PATCH")]
+    [DataRow("DELETE")]
+    public async Task NonPost_Methods_With_Parameters_Append_Query_String(string method)
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        await client.ExecuteAsync<string>("/resource", new HttpMethod(method), new Dictionary<string, string>
+        {
+            ["x y"] = "a&b",
+            ["p"] = "q"
+        });
+
+        var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
+        Assert.Contains("x%20y=a%26b", uri);
+        Assert.Contains("p=q", uri);
+    }
+
+    [TestMethod]
+    public async Task Query_String_Appending_Preserves_Existing_Query_And_Uses_Separators_Correctly()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        await client.ExecuteAsync<string>("/search?existing=1", HttpMethod.Get, new Dictionary<string, string>
+        {
+            ["new key"] = "new value"
+        });
+
+        var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
+        Assert.StartsWith("https://example.test/search?existing=1&", uri);
+        Assert.Contains("new%20key=new%20value", uri);
+    }
+
+
+    [TestMethod]
+    public async Task NonPost_With_Fragment_Appends_Query_Before_Fragment()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        await client.ExecuteAsync<string>("/resource#frag", HttpMethod.Put, new Dictionary<string, string>
+        {
+            ["x"] = "1"
+        });
+
+        Assert.AreEqual("https://example.test/resource?x=1#frag", handler.LastRequest!.RequestUri!.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public async Task NonPost_With_Relative_Uri_Uses_BaseAddress_And_Appends_Query()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://example.test/")
+        };
+        var client = new TestRestClient(httpClient) { BaseUrl = string.Empty };
+
+        await client.ExecuteAsync<string>("relative/path", HttpMethod.Delete, new Dictionary<string, string>
+        {
+            ["x"] = "1"
+        });
+
+        Assert.AreEqual("https://example.test/relative/path?x=1", handler.LastRequest!.RequestUri!.AbsoluteUri);
     }
 
     [TestMethod]
@@ -104,7 +155,7 @@ public class RestClientTests
         Assert.AreEqual("{\"message\":\"ok\"}", response.Response.Content);
     }
 
-    private enum FormatResponseCase
+    public enum FormatResponseCase
     {
         String,
         Bool,

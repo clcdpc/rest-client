@@ -181,28 +181,53 @@ namespace Clc.Rest
 
         protected virtual HttpRequestMessage AddParameters(RestRequest request, HttpRequestMessage httpRequest)
         {
-            if (request.Parameters.Any())
+            if (!request.Parameters.Any())
             {
-                if (request.Method == HttpMethod.Get)
-                {
-                    var path = httpRequest.RequestUri.AbsoluteUri.TrimEnd(new[] { '?' }) + "?";
-                    foreach (var qs in request.Parameters)
-                    {
-                        if (!string.IsNullOrWhiteSpace(qs.Value))
-                        {
-                            path += $"{qs.Key}={Uri.EscapeDataString(qs.Value)}&";
-                        }
-                    }
-                    httpRequest.RequestUri = new Uri(path.TrimEnd('&'));
-                }
+                return httpRequest;
+            }
 
-                if (request.Method == HttpMethod.Post && request.Body == null)
+            if (request.Method == HttpMethod.Post && request.Body == null)
+            {
+                httpRequest.Content = new FormUrlEncodedContent(request.Parameters);
+                return httpRequest;
+            }
+
+            if (request.Method != HttpMethod.Post)
+            {
+                var nonEmptyParameters = request.Parameters
+                    .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Key) && !string.IsNullOrWhiteSpace(parameter.Value))
+                    .Select(parameter => $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}")
+                    .ToList();
+
+                if (nonEmptyParameters.Any())
                 {
-                    httpRequest.Content = new FormUrlEncodedContent(request.Parameters);
+                    httpRequest.RequestUri = AppendQueryString(httpRequest.RequestUri, string.Join("&", nonEmptyParameters));
                 }
             }
 
             return httpRequest;
         }
+
+        private Uri AppendQueryString(Uri requestUri, string queryToAppend)
+        {
+            if (requestUri.IsAbsoluteUri)
+            {
+                var uriBuilder = new UriBuilder(requestUri);
+                var existingQuery = uriBuilder.Query.TrimStart('?');
+                uriBuilder.Query = string.IsNullOrEmpty(existingQuery)
+                    ? queryToAppend
+                    : $"{existingQuery}&{queryToAppend}";
+                return uriBuilder.Uri;
+            }
+
+            var originalUri = requestUri.OriginalString;
+            var fragmentIndex = originalUri.IndexOf('#');
+            var pathAndQuery = fragmentIndex >= 0 ? originalUri.Substring(0, fragmentIndex) : originalUri;
+            var fragment = fragmentIndex >= 0 ? originalUri.Substring(fragmentIndex) : string.Empty;
+
+            var separator = pathAndQuery.Contains("?") ? "&" : "?";
+            return new Uri($"{pathAndQuery}{separator}{queryToAppend}{fragment}", UriKind.Relative);
+        }
+
     }
 }
