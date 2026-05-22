@@ -232,6 +232,77 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public async Task ExecuteAsync_Overload_Compatibility_CancellationToken_Shapes()
+    {
+        var tokenSource = new CancellationTokenSource();
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{\"Name\":\"ok\"}"));
+        var client = CreateClient(handler);
+        var parameters = new Dictionary<string, string> { ["a"] = "b" };
+        var body = new { Name = "Body" };
+
+        await client.ExecuteAsync<string>("/data");
+        Assert.AreEqual(default, handler.LastCancellationToken);
+
+        await client.ExecuteAsync<string>("/data", cancellationToken: tokenSource.Token);
+        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+
+        await client.ExecuteAsync<string>("/data", tokenSource.Token);
+        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+
+        await client.ExecuteAsync<string>("/data", HttpMethod.Post, cancellationToken: tokenSource.Token);
+        await client.ExecuteAsync<string>("/data", HttpMethod.Post, body: body, cancellationToken: tokenSource.Token);
+        await client.ExecuteAsync<string>("/data", HttpMethod.Post, parameters: parameters, cancellationToken: tokenSource.Token);
+        await client.ExecuteAsync<string>("/data", HttpMethod.Post, parameters: parameters, body: body, cancellationToken: tokenSource.Token);
+        await client.ExecuteAsync<string>("/data", tokenSource.Token, HttpMethod.Post, parameters, body);
+        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+
+        await client.ExecuteAsync<string>(HttpMethod.Get, "/data", tokenSource.Token);
+        await client.ExecuteAsync<string>(HttpMethod.Post, "/data", body: body, cancellationToken: tokenSource.Token);
+        await client.ExecuteAsync<string>(HttpMethod.Post, "/data", parameters: parameters, cancellationToken: tokenSource.Token);
+        await client.ExecuteAsync<string>(HttpMethod.Post, "/data", parameters: parameters, body: body, cancellationToken: tokenSource.Token);
+        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/data"), tokenSource.Token);
+        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+    }
+
+    [TestMethod]
+    public async Task Legacy_FormatResponse_Uses_Compatibility_Response_And_Does_Not_Reread_Original_Content()
+    {
+        var originalContent = new ThrowOnSecondReadContent("{\"Name\":\"Legacy\"}");
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = originalContent });
+        var client = new LegacyFormatClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+
+        var response = await client.ExecuteAsync<string>("/data");
+
+        Assert.IsTrue(client.LegacyFormatCalled);
+        Assert.AreEqual("{\"Name\":\"Legacy\"}", response.Data);
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual(1, originalContent.ReadCount);
+    }
+
+    [TestMethod]
+    public async Task Legacy_FormatResponse_Compatibility_Response_Preserves_ContentType_Without_Mutating_Original()
+    {
+        var originalResponse = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new SingleReadTrackingContent("{\"Name\":\"Meta\"}")
+        };
+        originalResponse.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json")
+        {
+            CharSet = "utf-8"
+        };
+        var handler = new FakeHttpMessageHandler(_ => originalResponse);
+        var client = new LegacyFormatClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+
+        var response = await client.ExecuteAsync<string>("/data");
+
+        Assert.AreEqual("application/json", client.LegacyObservedContentTypeMediaType);
+        Assert.AreEqual("application/json; charset=utf-8", originalResponse.Content.Headers.ContentType!.ToString());
+        Assert.AreEqual("{\"Name\":\"Meta\"}", response.Data);
+    }
+
+    [TestMethod]
     public async Task ExecuteAsync_When_Cancelled_Before_Send_Captures_OperationCanceledException()
     {
         var tokenSource = new CancellationTokenSource();
@@ -351,6 +422,22 @@ public class RestClientTests
     {
     }
 
+    private sealed class LegacyFormatClient(HttpClient client) : Clc.Rest.RestClient(client)
+    {
+        public bool LegacyFormatCalled { get; private set; }
+        public string? LegacyObservedContentTypeMediaType { get; private set; }
+
+        public override T FormatResponse<T>(HttpResponseMessage response)
+        {
+            LegacyFormatCalled = true;
+            LegacyObservedContentTypeMediaType = response.Content?.Headers.ContentType?.MediaType;
+            var content = response.Content == null
+                ? string.Empty
+                : response.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            return (T)Convert.ChangeType(content, typeof(T));
+        }
+    }
+
     private sealed class Payload
     {
         public string Name { get; set; } = string.Empty;
@@ -363,6 +450,22 @@ public class RestClientTests
         protected override Task<Stream> CreateContentReadStreamAsync()
         {
             ReadCount++;
+            return base.CreateContentReadStreamAsync();
+        }
+    }
+
+    private sealed class ThrowOnSecondReadContent(string body) : StringContent(body, Encoding.UTF8, "application/json")
+    {
+        public int ReadCount { get; private set; }
+
+        protected override Task<Stream> CreateContentReadStreamAsync()
+        {
+            ReadCount++;
+            if (ReadCount > 1)
+            {
+                throw new InvalidOperationException("Original content read more than once.");
+            }
+
             return base.CreateContentReadStreamAsync();
         }
     }
