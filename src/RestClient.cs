@@ -169,7 +169,7 @@ namespace Clc.Rest
                 }
                 else if (IsFormatResponseOverridden())
                 {
-                    response.Data = FormatResponse<T>(_response);
+                    response.Data = FormatResponse<T>(CreateFormatResponseCompatibilityMessage(_response, responseContent));
                 }
                 else
                 {
@@ -198,6 +198,25 @@ namespace Clc.Rest
                     && m.GetParameters()[0].ParameterType == typeof(HttpResponseMessage));
 
             return method?.DeclaringType != typeof(RestClient);
+        }
+
+        private static HttpResponseMessage CreateFormatResponseCompatibilityMessage(HttpResponseMessage response, string content)
+        {
+            if (response.Content == null)
+            {
+                return response;
+            }
+
+            var mediaType = response.Content.Headers.ContentType?.MediaType ?? "application/json";
+            var compatibilityContent = new StringContent(content ?? string.Empty, Encoding.UTF8, mediaType);
+            foreach (var header in response.Content.Headers)
+            {
+                compatibilityContent.Headers.Remove(header.Key);
+                compatibilityContent.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+
+            response.Content = compatibilityContent;
+            return response;
         }
 
         public virtual RestRequest PreformatRestRequest(RestRequest request) => request;

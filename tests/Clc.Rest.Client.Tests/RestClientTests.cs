@@ -220,6 +220,35 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public async Task ExecuteAsync_With_Legacy_FormatResponse_Override_Reads_Original_Content_Only_Once()
+    {
+        var content = new ThrowOnSecondReadContent("legacy-content");
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        var client = new LegacyFormatResponseRestClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+
+        var response = await client.ExecuteAsync<string>("/data");
+
+        Assert.AreEqual(1, content.ReadCount);
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("legacy-content", response.Data);
+        Assert.AreEqual(1, client.LegacyOverrideReadCount);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_With_Legacy_FormatResponse_Override_Can_Deserialize_Json_From_Buffered_Content()
+    {
+        var content = new ThrowOnSecondReadContent("{\"Name\":\"Buffered\"}");
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        var client = new LegacyFormatResponseRestClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+
+        var response = await client.ExecuteAsync<Payload>("/data");
+
+        Assert.AreEqual(1, content.ReadCount);
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("Buffered", response.Data.Name);
+    }
+
+    [TestMethod]
     public async Task ExecuteAsync_Passes_CancellationToken_To_HttpMessageHandler()
     {
         var tokenSource = new CancellationTokenSource();
@@ -364,6 +393,33 @@ public class RestClientTests
         {
             ReadCount++;
             return base.CreateContentReadStreamAsync();
+        }
+    }
+
+    private sealed class ThrowOnSecondReadContent(string body) : StringContent(body, Encoding.UTF8, "application/json")
+    {
+        public int ReadCount { get; private set; }
+
+        protected override Task<Stream> CreateContentReadStreamAsync()
+        {
+            ReadCount++;
+            if (ReadCount > 1)
+            {
+                throw new InvalidOperationException("content was read more than once");
+            }
+
+            return base.CreateContentReadStreamAsync();
+        }
+    }
+
+    private sealed class LegacyFormatResponseRestClient(HttpClient client) : Clc.Rest.RestClient(client)
+    {
+        public int LegacyOverrideReadCount { get; private set; }
+
+        public override T FormatResponse<T>(HttpResponseMessage response)
+        {
+            LegacyOverrideReadCount++;
+            return base.FormatResponse<T>(response);
         }
     }
 }

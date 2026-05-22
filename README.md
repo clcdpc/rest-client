@@ -13,6 +13,19 @@ A simple library for making REST requests.
   - `HttpRequestException` from `SendAsync`.
   - deserialization exceptions.
 
+## Custom response formatting guidance
+
+`RestClient` supports three response-formatting extension points:
+
+- `RestRequest.FormatOutput` for request-specific formatting.
+- `FormatResponseAsync<T>(HttpResponseMessage response, string content)` for modern custom formatting.
+- `FormatResponse<T>(HttpResponseMessage response)` as a legacy compatibility path.
+
+`ExecuteAsync<T>` reads response content once and stores it for response metadata and default deserialization.
+When a legacy `FormatResponse<T>(HttpResponseMessage)` override is used, the client now provides buffered compatibility content so legacy overrides can still read `response.Content` without re-reading the original HTTP content stream.
+
+For new custom formatter implementations, prefer overriding `FormatResponseAsync<T>(HttpResponseMessage response, string content)` to operate directly on the already-buffered content.
+
 ## Request `Body` and `Parameters` behavior
 
 `RestClient` applies `Body` and `Parameters` according to HTTP method:
