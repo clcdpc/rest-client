@@ -4,7 +4,7 @@ A simple library for making REST requests.
 
 ## Async cancellation and error behavior
 
-`ExecuteAsync<T>` overloads accept an optional `CancellationToken cancellationToken = default`.
+`ExecuteAsync<T>` overloads support cancellation tokens, including no-token convenience overloads and explicit token overloads.
 
 - The token is passed to `HttpClient.SendAsync`.
 - For async request/response content reads, cancellation is honored cooperatively around content reads.
@@ -30,3 +30,8 @@ When `Parameters` are appended to the URL query string:
 - both keys and values are URL-encoded.
 - existing query strings are preserved.
 - the client appends new parameters with `?` or `&` as appropriate.
+
+
+## Custom response formatting guidance
+
+Prefer overriding `FormatResponseAsync<T>(HttpResponseMessage response, string content)` for new custom response formatting. `ExecuteAsync<T>` reads response content once and passes that content string through the async formatter path. Legacy `FormatResponse<T>(HttpResponseMessage response)` overrides remain supported: when a legacy override is detected, `ExecuteAsync<T>` invokes it with a compatibility `HttpResponseMessage` whose `Content` is backed by the already-read response-content string. Reading `response.Content` inside a legacy override therefore does not re-read the original HTTP response stream.

@@ -281,6 +281,62 @@ public class RestClientTests
         Assert.IsNotNull(response.Exception);
     }
 
+    [TestMethod]
+    public async Task ExecuteAsync_Legacy_FormatResponse_Uses_Compatibility_Response_And_Preserves_Single_Read()
+    {
+        var content = new SingleReadTrackingContent("legacy-data");
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        var sourceResponse = new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+        sourceResponse.Headers.Add("X-Source", "keep");
+        var handler = new FakeHttpMessageHandler(_ => sourceResponse);
+        var client = new LegacyFormatRestClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+
+        var response = await client.ExecuteAsync<string>("/data");
+
+        Assert.AreEqual(1, content.ReadCount);
+        Assert.IsTrue(client.LegacyCalled);
+        Assert.AreEqual("legacy-data", response.Data);
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("application/json", client.ObservedContentTypeMediaType);
+        Assert.AreSame(sourceResponse.Content, client.ObservedOriginalContentReference);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Overloads_Pass_Expected_CancellationToken_And_Are_Unambiguous()
+    {
+        var token = new CancellationTokenSource().Token;
+        var parameters = new Dictionary<string, string> { ["k"] = "v" };
+        var body = new { Name = "Body" };
+
+        async Task AssertToken(Func<TestRestClient, Task> call, CancellationToken expected)
+        {
+            var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+            var client = CreateClient(handler);
+            await call(client);
+            Assert.AreEqual(expected, handler.LastCancellationToken);
+        }
+
+        await AssertToken(c => c.ExecuteAsync<string>("/data"), default);
+        await AssertToken(c => c.ExecuteAsync<string>("/data", cancellationToken: token), token);
+        await AssertToken(c => c.ExecuteAsync<string>("/data", token), token);
+        await AssertToken(c => c.ExecuteAsync<string>("/data", HttpMethod.Post), default);
+        await AssertToken(c => c.ExecuteAsync<string>("/data", HttpMethod.Post, cancellationToken: token), token);
+        await AssertToken(c => c.ExecuteAsync<string>("/data", HttpMethod.Post, body: body, cancellationToken: token), token);
+        await AssertToken(c => c.ExecuteAsync<string>("/data", HttpMethod.Post, parameters: parameters, cancellationToken: token), token);
+        await AssertToken(c => c.ExecuteAsync<string>("/data", HttpMethod.Post, parameters: parameters, body: body, cancellationToken: token), token);
+        await AssertToken(c => c.ExecuteAsync<string>("/data", token, HttpMethod.Post, parameters, body), token);
+
+        await AssertToken(c => c.ExecuteAsync<string>(HttpMethod.Get, "/data"), default);
+        await AssertToken(c => c.ExecuteAsync<string>(HttpMethod.Get, "/data", cancellationToken: token), token);
+        await AssertToken(c => c.ExecuteAsync<string>(HttpMethod.Get, "/data", token), token);
+        await AssertToken(c => c.ExecuteAsync<string>(HttpMethod.Post, "/data", body: body, cancellationToken: token), token);
+        await AssertToken(c => c.ExecuteAsync<string>(HttpMethod.Post, "/data", parameters: parameters, cancellationToken: token), token);
+        await AssertToken(c => c.ExecuteAsync<string>(HttpMethod.Post, "/data", parameters: parameters, body: body, cancellationToken: token), token);
+
+        await AssertToken(c => c.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/data")), default);
+        await AssertToken(c => c.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/data"), token), token);
+    }
+
     public enum FormatResponseCase
     {
         String,
@@ -349,6 +405,24 @@ public class RestClientTests
 
     private sealed class TestRestClient(HttpClient client) : Clc.Rest.RestClient(client)
     {
+    }
+
+    private sealed class LegacyFormatRestClient(HttpClient client) : Clc.Rest.RestClient(client)
+    {
+        public bool LegacyCalled { get; private set; }
+        public string? ObservedContentTypeMediaType { get; private set; }
+        public HttpContent? ObservedOriginalContentReference { get; private set; }
+
+        public override T FormatResponse<T>(HttpResponseMessage response)
+        {
+            LegacyCalled = true;
+            ObservedContentTypeMediaType = response.Content?.Headers.ContentType?.MediaType;
+            ObservedOriginalContentReference = response.Content;
+            var text = response.Content == null
+                ? string.Empty
+                : response.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            return (T)Convert.ChangeType(text, typeof(T));
+        }
     }
 
     private sealed class Payload
