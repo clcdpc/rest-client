@@ -30,3 +30,10 @@ When `Parameters` are appended to the URL query string:
 - both keys and values are URL-encoded.
 - existing query strings are preserved.
 - the client appends new parameters with `?` or `&` as appropriate.
+## Custom response formatting guidance
+
+- Prefer overriding `FormatResponseAsync<T>(HttpResponseMessage response, string content)` for custom response formatting logic.
+- `ExecuteAsync<T>` reads response content once and passes that content into the async formatter path.
+- Legacy overrides of `FormatResponse<T>(HttpResponseMessage response)` are still supported for compatibility. During `ExecuteAsync<T>`, the legacy formatter receives a compatibility `HttpResponseMessage` whose content is backed by the already-read response content.
+- If you override the legacy formatter and read `response.Content`, that read occurs against compatibility content, not the original HTTP content stream used by `ExecuteAsync<T>`.
+

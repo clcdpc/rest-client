@@ -219,6 +219,21 @@ public class RestClientTests
         Assert.AreEqual("{\"Name\":\"Once\"}", response.Response.Content);
     }
 
+
+    [TestMethod]
+    public async Task ExecuteAsync_Legacy_FormatResponse_Override_Uses_Compatibility_Content_Without_ReReading_Original()
+    {
+        var content = new ThrowOnSecondReadContent("legacy-body");
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        var client = new LegacyFormatResponseRestClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+
+        var response = await client.ExecuteAsync<string>("/data");
+
+        Assert.AreEqual(1, content.ReadCount);
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("legacy-body", response.Data);
+    }
+
     [TestMethod]
     public async Task ExecuteAsync_Passes_CancellationToken_To_HttpMessageHandler()
     {
@@ -351,6 +366,23 @@ public class RestClientTests
     {
     }
 
+    private sealed class LegacyFormatResponseRestClient(HttpClient client) : Clc.Rest.RestClient(client)
+    {
+        public override T FormatResponse<T>(HttpResponseMessage response)
+        {
+            var content = response.Content == null
+                ? string.Empty
+                : response.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+
+            if (typeof(T) == typeof(string))
+            {
+                return (T)(object)content;
+            }
+
+            return default!;
+        }
+    }
+
     private sealed class Payload
     {
         public string Name { get; set; } = string.Empty;
@@ -363,6 +395,22 @@ public class RestClientTests
         protected override Task<Stream> CreateContentReadStreamAsync()
         {
             ReadCount++;
+            return base.CreateContentReadStreamAsync();
+        }
+    }
+
+    private sealed class ThrowOnSecondReadContent(string body) : StringContent(body, Encoding.UTF8, "application/json")
+    {
+        public int ReadCount { get; private set; }
+
+        protected override Task<Stream> CreateContentReadStreamAsync()
+        {
+            ReadCount++;
+            if (ReadCount > 1)
+            {
+                throw new InvalidOperationException("Content was read more than once.");
+            }
+
             return base.CreateContentReadStreamAsync();
         }
     }

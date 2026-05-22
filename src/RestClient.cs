@@ -169,7 +169,7 @@ namespace Clc.Rest
                 }
                 else if (IsFormatResponseOverridden())
                 {
-                    response.Data = FormatResponse<T>(_response);
+                    response.Data = FormatResponse<T>(CreateCompatibilityResponse(_response, responseContent));
                 }
                 else
                 {
@@ -185,6 +185,32 @@ namespace Clc.Rest
         }
 
         public IRestResponse<T> Execute<T>(RestRequest request) => ExecuteAsync<T>(request).Result;
+
+        private static HttpResponseMessage CreateCompatibilityResponse(HttpResponseMessage response, string content)
+        {
+            var compatibilityResponse = new HttpResponseMessage(response.StatusCode)
+            {
+                ReasonPhrase = response.ReasonPhrase,
+                Version = response.Version,
+                RequestMessage = response.RequestMessage,
+                Content = content == null ? null : new StringContent(content)
+            };
+
+            foreach (var header in response.Headers)
+            {
+                compatibilityResponse.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+
+            if (response.Content != null && compatibilityResponse.Content != null)
+            {
+                foreach (var header in response.Content.Headers)
+                {
+                    compatibilityResponse.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+            }
+
+            return compatibilityResponse;
+        }
 
         private bool IsFormatResponseOverridden()
         {
