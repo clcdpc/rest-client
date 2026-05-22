@@ -19,3 +19,13 @@ When `Parameters` are appended to the URL query string:
 - both keys and values are URL-encoded.
 - existing query strings are preserved.
 - the client appends new parameters with `?` or `&` as appropriate.
+
+## Async cancellation and exception behavior
+
+`ExecuteAsync<T>` overloads include token-aware variants that accept a `CancellationToken` and pass it to:
+
+- `HttpClient.SendAsync`
+- request content reads
+- response content reads
+
+Behavior is consistent for network, cancellation, and deserialization failures: exceptions are captured in `IRestResponse<T>.Exception` and returned to the caller (they are not rethrown from `ExecuteAsync<T>`).
