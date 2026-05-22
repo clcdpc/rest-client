@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text;
 using Clc.Rest.Models;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 
 namespace Clc.Rest.Client.Tests;
 
@@ -219,6 +220,56 @@ public class RestClientTests
         Assert.AreEqual("{\"Name\":\"Once\"}", response.Response.Content);
     }
 
+    [TestMethod]
+    public async Task ExecuteAsync_CancellationToken_Reaches_HttpMessageHandler()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        using var cts = new CancellationTokenSource();
+
+        await client.ExecuteAsync<string>("/data", HttpMethod.Get, null, null, cts.Token);
+
+        Assert.AreEqual(cts.Token, handler.LastCancellationToken);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Canceled_Before_Send_Is_Captured_In_Response_Exception()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var response = await client.ExecuteAsync<string>("/data", HttpMethod.Get, null, null, cts.Token);
+
+        Assert.IsNotNull(response.Exception);
+        Assert.IsInstanceOfType<OperationCanceledException>(response.Exception);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_HttpRequestException_Is_Captured_In_Response_Exception()
+    {
+        var handler = new FakeHttpMessageHandler(_ => throw new HttpRequestException("network down"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>("/data", HttpMethod.Get);
+
+        Assert.IsNotNull(response.Exception);
+        Assert.IsInstanceOfType<HttpRequestException>(response.Exception);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Deserialization_Failure_Is_Captured_In_Response_Exception()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{not-json"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<Payload>("/data");
+
+        Assert.IsNotNull(response.Exception);
+        Assert.IsInstanceOfType<JsonReaderException>(response.Exception);
+    }
+
     public enum FormatResponseCase
     {
         String,
@@ -275,10 +326,12 @@ public class RestClientTests
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _callback = callback;
         public HttpRequestMessage? LastRequest { get; private set; }
+        public CancellationToken LastCancellationToken { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequest = request;
+            LastCancellationToken = cancellationToken;
             return Task.FromResult(_callback(request));
         }
     }
