@@ -30,6 +30,7 @@ When `Parameters` are appended to the URL query string:
 - both keys and values are URL-encoded.
 - existing query strings are preserved.
 - the client appends new parameters with `?` or `&` as appropriate.
+
 ## Custom response formatting guidance
 
 - Prefer overriding `FormatResponseAsync<T>(HttpResponseMessage response, string content)` for custom response formatting logic.

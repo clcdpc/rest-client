@@ -264,6 +264,9 @@ public class RestClientTests
         await client.ExecuteAsync<string>("/data", cancellationToken: tokenSource.Token);
         Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
 
+        await client.ExecuteAsync<string>("/data", tokenSource.Token, HttpMethod.Post, body: new { Name = "Body" });
+        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+
         await client.ExecuteAsync<string>(HttpMethod.Get, "/data");
         Assert.AreEqual(default(CancellationToken), handler.LastCancellationToken);
 
@@ -299,7 +302,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>("/data", HttpMethod.Post, body: new { Name = "Body" }, cancellationToken: tokenSource.Token);
+        var response = await client.ExecuteAsync<string>("/data", tokenSource.Token, HttpMethod.Post, body: new { Name = "Body" });
 
         Assert.IsInstanceOfType<OperationCanceledException>(response.Exception);
         Assert.IsNull(handler.LastRequest);
