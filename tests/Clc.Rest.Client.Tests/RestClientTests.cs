@@ -3,6 +3,12 @@ using System.Net.Http;
 using System.Text;
 using Clc.Rest.Models;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Reflection;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Clc.Rest.Client.Tests;
 
@@ -17,7 +23,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>("/post", HttpMethod.Post, body: new { Name = "Alice" });
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Post, "/post", new { Name = "Alice" }));
 
         Assert.AreEqual(HttpMethod.Post, handler.LastRequest!.Method);
         Assert.AreEqual("{\"Name\":\"Alice\"}", await handler.LastRequest.Content!.ReadAsStringAsync(TestContext.CancellationToken));
@@ -30,11 +36,11 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>("/post", HttpMethod.Post, new Dictionary<string, string>
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Post, "/post", parameters: new Dictionary<string, string>
         {
             ["first"] = "one",
             ["second"] = "two"
-        });
+        }));
 
         Assert.AreEqual("application/x-www-form-urlencoded", handler.LastRequest!.Content!.Headers.ContentType!.MediaType);
         var payload = await handler.LastRequest.Content.ReadAsStringAsync(TestContext.CancellationToken);
@@ -48,7 +54,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>("/post", HttpMethod.Post, new Dictionary<string, string> { ["a"] = "b" }, new { Id = 42 });
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Post, "/post", new { Id = 42 }, new Dictionary<string, string> { ["a"] = "b" }));
 
         var sentBody = await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken);
         Assert.Contains("\"Id\":42", sentBody);
@@ -62,11 +68,11 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>("/search", HttpMethod.Get, new Dictionary<string, string>
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/search", parameters: new Dictionary<string, string>
         {
             ["q"] = "value",
             ["n"] = "10"
-        });
+        }));
 
         var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
         Assert.StartsWith("https://example.test/search?", uri);
@@ -84,11 +90,11 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>("/resource", new HttpMethod(method), new Dictionary<string, string>
+        await client.ExecuteAsync<string>(new RestRequest(new HttpMethod(method), "/resource", parameters: new Dictionary<string, string>
         {
             ["x y"] = "a&b",
             ["p"] = "q"
-        });
+        }));
 
         var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
         Assert.Contains("x%20y=a%26b", uri);
@@ -101,10 +107,10 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>("/search?existing=1", HttpMethod.Get, new Dictionary<string, string>
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/search?existing=1", parameters: new Dictionary<string, string>
         {
             ["new key"] = "new value"
-        });
+        }));
 
         var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
         Assert.StartsWith("https://example.test/search?existing=1&", uri);
@@ -118,10 +124,10 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>("/resource#frag", HttpMethod.Put, new Dictionary<string, string>
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Put, "/resource#frag", parameters: new Dictionary<string, string>
         {
             ["x"] = "1"
-        });
+        }));
 
         Assert.AreEqual("https://example.test/resource?x=1#frag", handler.LastRequest!.RequestUri!.AbsoluteUri);
     }
@@ -136,10 +142,10 @@ public class RestClientTests
         };
         var client = new TestRestClient(httpClient) { BaseUrl = string.Empty };
 
-        await client.ExecuteAsync<string>("relative/path", HttpMethod.Delete, new Dictionary<string, string>
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Delete, "relative/path", parameters: new Dictionary<string, string>
         {
             ["x"] = "1"
-        });
+        }));
 
         Assert.AreEqual("https://example.test/relative/path?x=1", handler.LastRequest!.RequestUri!.AbsoluteUri);
     }
@@ -200,7 +206,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>("/post", HttpMethod.Post, body: new { Name = "Alice" });
+        var response = await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Post, "/post", new { Name = "Alice" }));
 
         Assert.AreEqual("{\"Name\":\"Alice\"}", response.BodyString);
     }
@@ -253,7 +259,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>("/data", HttpMethod.Post, body: new { Name = "Body" }, cancellationToken: tokenSource.Token);
+        var response = await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Post, "/data", new { Name = "Body" }), tokenSource.Token);
 
         Assert.IsInstanceOfType<OperationCanceledException>(response.Exception);
         Assert.IsNull(handler.LastRequest);
@@ -281,34 +287,60 @@ public class RestClientTests
         Assert.IsNotNull(response.Exception);
     }
 
-    public enum FormatResponseCase
+    [TestMethod]
+    public void Public_Async_Api_Shape_Is_Restricted()
     {
-        String,
-        Bool,
-        Json
+        var methods = typeof(RestClient).GetMethods(BindingFlags.Public | BindingFlags.Instance);
+
+        var executeAsyncMethods = methods.Where(m => m.Name == "ExecuteAsync").ToArray();
+        Assert.AreEqual(3, executeAsyncMethods.Length);
+        Assert.IsFalse(methods.Any(m => m.Name is "GetAsync" or "PostAsync" or "PutAsync" or "PatchAsync" or "DeleteAsync"));
+
+        Assert.IsTrue(executeAsyncMethods.Any(m => MatchesSignature(m, typeof(RestRequest), typeof(CancellationToken))));
+        Assert.IsTrue(executeAsyncMethods.Any(m => MatchesSignature(m, typeof(string), typeof(CancellationToken))));
+        Assert.IsTrue(executeAsyncMethods.Any(m => MatchesSignature(m, typeof(HttpMethod), typeof(string), typeof(CancellationToken))));
     }
 
     [TestMethod]
-    [DataRow(FormatResponseCase.String, "hello", "hello")]
-    [DataRow(FormatResponseCase.Bool, "ignored", "true")]
-    [DataRow(FormatResponseCase.Json, "{\"Name\":\"World\"}", "World")]
-    public void FormatResponse_Returns_Expected_Output(FormatResponseCase caseName, string payload, string expectedValue)
+    public void Legacy_Formatter_Apis_Are_Removed()
     {
-        var client = new TestRestClient(new HttpClient(new FakeHttpMessageHandler(_ => JsonResponse("{}"))));
-        var response = JsonResponse(payload);
+        var allMethods = typeof(RestClient).GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.IsFalse(allMethods.Any(m => m.Name == "FormatResponse"));
+        Assert.IsFalse(allMethods.Any(m => m.Name == "IsFormatResponseOverridden"));
+        Assert.IsFalse(allMethods.Any(m => m.Name == "CreateCompatibilityResponse"));
+    }
 
-        if (caseName == FormatResponseCase.String)
+    [TestMethod]
+    public async Task Custom_Client_Formatter_Uses_Supplied_Content()
+    {
+        var content = new ThrowOnSecondReadContent("formatter-body");
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        var client = new RecordingFormatRestClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+
+        var response = await client.ExecuteAsync<string>("/data");
+
+        Assert.AreEqual(1, content.ReadCount);
+        Assert.AreEqual("formatter-body", client.LastContent);
+        Assert.AreEqual("formatter-body", response.Data);
+        Assert.IsNull(response.Exception);
+    }
+
+    [TestMethod]
+    public async Task Request_Specific_Formatter_Uses_Supplied_Content()
+    {
+        var content = new ThrowOnSecondReadContent("value");
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        var client = CreateClient(handler);
+        var request = new RestRequest(HttpMethod.Get, "/data")
         {
-            Assert.AreEqual(expectedValue, client.FormatResponse<string>(response));
-        }
-        else if (caseName == FormatResponseCase.Bool)
-        {
-            Assert.AreEqual(bool.Parse(expectedValue), client.FormatResponse<bool>(response));
-        }
-        else
-        {
-            Assert.AreEqual(expectedValue, client.FormatResponse<Payload>(response).Name);
-        }
+            FormatOutputAsync = (response, responseContent, cancellationToken) => Task.FromResult<object>($"formatted:{responseContent}")
+        };
+
+        var result = await client.ExecuteAsync<string>(request);
+
+        Assert.AreEqual(1, content.ReadCount);
+        Assert.AreEqual("formatted:value", result.Data);
+        Assert.IsNull(result.Exception);
     }
 
     [TestMethod]
@@ -347,8 +379,30 @@ public class RestClientTests
         }
     }
 
-    private sealed class TestRestClient(HttpClient client) : Clc.Rest.RestClient(client)
+    private static bool MatchesSignature(MethodInfo method, params Type[] parameterTypes)
     {
+        var parameters = method.GetParameters();
+        return method.IsGenericMethodDefinition && parameters.Select(p => p.ParameterType).SequenceEqual(parameterTypes);
+    }
+
+    private class TestRestClient(HttpClient client) : Clc.Rest.RestClient(client)
+    {
+    }
+
+    private sealed class RecordingFormatRestClient(HttpClient client) : TestRestClient(client)
+    {
+        public string LastContent { get; private set; }
+
+        public override Task<T> FormatResponseAsync<T>(HttpResponseMessage response, string content, CancellationToken cancellationToken = default)
+        {
+            LastContent = content;
+            if (typeof(T) == typeof(string))
+            {
+                return Task.FromResult((T)(object)content);
+            }
+
+            return base.FormatResponseAsync<T>(response, content, cancellationToken);
+        }
     }
 
     private sealed class Payload
@@ -363,6 +417,19 @@ public class RestClientTests
         protected override Task<Stream> CreateContentReadStreamAsync()
         {
             ReadCount++;
+            return base.CreateContentReadStreamAsync();
+        }
+    }
+
+    private sealed class ThrowOnSecondReadContent(string body) : SingleReadTrackingContent(body)
+    {
+        protected override Task<Stream> CreateContentReadStreamAsync()
+        {
+            if (ReadCount >= 1)
+            {
+                throw new InvalidOperationException("Content read more than once.");
+            }
+
             return base.CreateContentReadStreamAsync();
         }
     }

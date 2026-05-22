@@ -2,9 +2,17 @@
 
 A simple library for making REST requests.
 
-## Async cancellation and error behavior
+## Async API (breaking change)
 
-`ExecuteAsync<T>` overloads accept an optional `CancellationToken cancellationToken = default`.
+`RestClient` now exposes exactly three public async execution methods:
+
+- `ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken = default)`
+- `ExecuteAsync<T>(string url, CancellationToken cancellationToken = default)`
+- `ExecuteAsync<T>(HttpMethod method, string url, CancellationToken cancellationToken = default)`
+
+Use `RestRequest` when you need request body, parameters, headers, authenticator, serializer, or request-specific formatting.
+
+## Async cancellation and error behavior
 
 - The token is passed to `HttpClient.SendAsync`.
 - For async request/response content reads, cancellation is honored cooperatively around content reads.
@@ -12,6 +20,14 @@ A simple library for making REST requests.
   - `OperationCanceledException` when cancellation occurs (including cancellation before `SendAsync`).
   - `HttpRequestException` from `SendAsync`.
   - deserialization exceptions.
+
+## Response formatting (breaking change)
+
+- Legacy `FormatResponse<T>(HttpResponseMessage response)` was removed.
+- Override `FormatResponseAsync<T>(HttpResponseMessage response, string content, CancellationToken cancellationToken = default)` for client-level formatting.
+- `FormatResponseAsync` uses the already-read `content` argument and should not read `response.Content`.
+- Request-level formatting uses `RestRequest.FormatOutputAsync` with signature `Func<HttpResponseMessage, string, CancellationToken, Task<object>>`.
+- `ExecuteAsync` reads response content once and passes that same string to formatters.
 
 ## Request `Body` and `Parameters` behavior
 
