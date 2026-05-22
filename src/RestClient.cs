@@ -69,14 +69,18 @@ namespace Clc.Rest
 
         public IRestResponse<T> Execute<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null) => ExecuteAsync<T>(method, url, parameters, body).Result;
         public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null) =>
-            await ExecuteAsync<T>(method, url, parameters, body, CancellationToken.None).ConfigureAwait(false);
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null, CancellationToken cancellationToken) =>
+            await ExecuteAsync<T>(new RestRequest(method, url, body, parameters), CancellationToken.None).ConfigureAwait(false);
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, CancellationToken cancellationToken, Dictionary<string, string> parameters = null, object body = null) =>
+            await ExecuteAsync<T>(new RestRequest(method, url, body, parameters), cancellationToken).ConfigureAwait(false);
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, Dictionary<string, string> parameters, object body, CancellationToken cancellationToken) =>
             await ExecuteAsync<T>(new RestRequest(method, url, body, parameters), cancellationToken).ConfigureAwait(false);
 
         public IRestResponse<T> Execute<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null) => ExecuteAsync<T>(url, method, parameters, body).Result;
         public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null) =>
-            await ExecuteAsync<T>(url, method, parameters, body, CancellationToken.None).ConfigureAwait(false);
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null, CancellationToken cancellationToken) =>
+            await ExecuteAsync<T>(new RestRequest(method ?? HttpMethod.Get, url, body, parameters), CancellationToken.None).ConfigureAwait(false);
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, CancellationToken cancellationToken, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null) =>
+            await ExecuteAsync<T>(new RestRequest(method ?? HttpMethod.Get, url, body, parameters), cancellationToken).ConfigureAwait(false);
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, HttpMethod method, Dictionary<string, string> parameters, object body, CancellationToken cancellationToken) =>
             await ExecuteAsync<T>(new RestRequest(method ?? HttpMethod.Get, url, body, parameters), cancellationToken).ConfigureAwait(false);
 
         public virtual T FormatResponse<T>(HttpResponseMessage response)
@@ -193,7 +197,7 @@ namespace Clc.Rest
                 ReasonPhrase = response.ReasonPhrase,
                 Version = response.Version,
                 RequestMessage = response.RequestMessage,
-                Content = content == null ? null : new StringContent(content)
+                Content = content == null ? null : new StringContent(content, Encoding.UTF8, response.Content?.Headers.ContentType?.MediaType ?? "text/plain")
             };
 
             foreach (var header in response.Headers)
@@ -205,6 +209,11 @@ namespace Clc.Rest
             {
                 foreach (var header in response.Content.Headers)
                 {
+                    if (string.Equals(header.Key, "Content-Type", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
                     compatibilityResponse.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
                 }
             }

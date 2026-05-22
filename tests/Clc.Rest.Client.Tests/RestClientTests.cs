@@ -232,6 +232,7 @@ public class RestClientTests
         Assert.AreEqual(1, content.ReadCount);
         Assert.IsNull(response.Exception);
         Assert.AreEqual("legacy-body", response.Data);
+        Assert.IsTrue(client.LegacyFormatResponseCalled);
     }
 
     [TestMethod]
@@ -243,6 +244,36 @@ public class RestClientTests
 
         await client.ExecuteAsync<string>("/data", cancellationToken: tokenSource.Token);
 
+        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+    }
+
+
+    [TestMethod]
+    public async Task ExecuteAsync_Overloads_With_And_Without_CancellationToken_Are_NonAmbiguous_And_Pass_Token()
+    {
+        var tokenSource = new CancellationTokenSource();
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        await client.ExecuteAsync<string>("/data");
+        Assert.AreEqual(default(CancellationToken), handler.LastCancellationToken);
+
+        await client.ExecuteAsync<string>("/data", tokenSource.Token);
+        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+
+        await client.ExecuteAsync<string>("/data", cancellationToken: tokenSource.Token);
+        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+
+        await client.ExecuteAsync<string>(HttpMethod.Get, "/data");
+        Assert.AreEqual(default(CancellationToken), handler.LastCancellationToken);
+
+        await client.ExecuteAsync<string>(HttpMethod.Get, "/data", tokenSource.Token);
+        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/data"));
+        Assert.AreEqual(default(CancellationToken), handler.LastCancellationToken);
+
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/data"), tokenSource.Token);
         Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
     }
 
@@ -368,8 +399,11 @@ public class RestClientTests
 
     private sealed class LegacyFormatResponseRestClient(HttpClient client) : Clc.Rest.RestClient(client)
     {
+        public bool LegacyFormatResponseCalled { get; private set; }
         public override T FormatResponse<T>(HttpResponseMessage response)
         {
+            LegacyFormatResponseCalled = true;
+
             var content = response.Content == null
                 ? string.Empty
                 : response.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
