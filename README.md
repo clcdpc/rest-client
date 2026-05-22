@@ -30,3 +30,17 @@ When `Parameters` are appended to the URL query string:
 - both keys and values are URL-encoded.
 - existing query strings are preserved.
 - the client appends new parameters with `?` or `&` as appropriate.
+
+## Custom response formatting guidance
+
+`RestClient` supports custom response formatting via:
+
+- `FormatResponseAsync<T>(HttpResponseMessage response, string content)` (recommended extension point).
+- legacy `FormatResponse<T>(HttpResponseMessage response)` overrides (compatibility path).
+- per-request `RestRequest.FormatOutput`.
+
+Implementation notes:
+
+- `ExecuteAsync<T>` reads HTTP response content once for the internal pipeline.
+- when a legacy `FormatResponse<T>(HttpResponseMessage)` override is present, the client passes a compatibility `HttpResponseMessage` that contains the already-buffered content so legacy formatters can still read `response.Content` without re-reading the original transport stream.
+- for new custom formatters, prefer overriding `FormatResponseAsync<T>(HttpResponseMessage response, string content)` and using the provided `content` argument.

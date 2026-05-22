@@ -220,6 +220,34 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public async Task ExecuteAsync_With_Legacy_FormatResponse_Override_Does_Not_Reread_Original_Content()
+    {
+        var content = new SingleReadTrackingContent("{\"Name\":\"Legacy\"}");
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        var client = new LegacyFormatResponseClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+
+        var response = await client.ExecuteAsync<Payload>("/data");
+
+        Assert.AreEqual(1, content.ReadCount);
+        Assert.AreEqual("Legacy", response.Data.Name);
+        Assert.AreEqual("{\"Name\":\"Legacy\"}", response.Response.Content);
+        Assert.AreEqual(1, client.LegacyReadCount);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_With_FormatResponseAsync_Override_Uses_PreRead_Content()
+    {
+        var content = new SingleReadTrackingContent("{\"Name\":\"AsyncPath\"}");
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        var client = new AsyncFormatResponseClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+
+        var response = await client.ExecuteAsync<Payload>("/data");
+
+        Assert.AreEqual(1, content.ReadCount);
+        Assert.AreEqual("AsyncPath", response.Data.Name);
+    }
+
+    [TestMethod]
     public async Task ExecuteAsync_Passes_CancellationToken_To_HttpMessageHandler()
     {
         var tokenSource = new CancellationTokenSource();
@@ -349,6 +377,25 @@ public class RestClientTests
 
     private sealed class TestRestClient(HttpClient client) : Clc.Rest.RestClient(client)
     {
+    }
+
+    private sealed class LegacyFormatResponseClient(HttpClient client) : Clc.Rest.RestClient(client)
+    {
+        public int LegacyReadCount { get; private set; }
+
+        public override T FormatResponse<T>(HttpResponseMessage response)
+        {
+            LegacyReadCount++;
+            return base.FormatResponse<T>(response);
+        }
+    }
+
+    private sealed class AsyncFormatResponseClient(HttpClient client) : Clc.Rest.RestClient(client)
+    {
+        public override Task<T> FormatResponseAsync<T>(HttpResponseMessage response, string content)
+        {
+            return base.FormatResponseAsync<T>(response, content);
+        }
     }
 
     private sealed class Payload

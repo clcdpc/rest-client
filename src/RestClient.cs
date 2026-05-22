@@ -132,6 +132,11 @@ namespace Clc.Rest
             return Task.FromResult(output);
         }
 
+        protected virtual T FormatResponse<T>(HttpResponseMessage response, string content)
+        {
+            return FormatResponseAsync<T>(response, content).ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+
         public async Task<IRestResponse<T>> ExecuteAsync<T>(RestRequest request) =>
             await ExecuteAsync<T>(request, CancellationToken.None).ConfigureAwait(false);
 
@@ -169,7 +174,8 @@ namespace Clc.Rest
                 }
                 else if (IsFormatResponseOverridden())
                 {
-                    response.Data = FormatResponse<T>(_response);
+                    var compatibilityResponse = CreateCompatibilityResponse(_response, responseContent);
+                    response.Data = FormatResponse<T>(compatibilityResponse, responseContent);
                 }
                 else
                 {
@@ -295,6 +301,39 @@ namespace Clc.Rest
             var value = await content.ReadAsStringAsync().ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             return value;
+        }
+
+        private static HttpResponseMessage CreateCompatibilityResponse(HttpResponseMessage source, string content)
+        {
+            var response = new HttpResponseMessage(source.StatusCode)
+            {
+                Version = source.Version,
+                ReasonPhrase = source.ReasonPhrase,
+                RequestMessage = source.RequestMessage,
+                Content = content == null
+                    ? null
+                    : new StringContent(content, Encoding.UTF8, source.Content?.Headers.ContentType?.MediaType ?? "text/plain")
+            };
+
+            foreach (var header in source.Headers)
+            {
+                response.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+
+            if (source.Content?.Headers != null && response.Content != null)
+            {
+                foreach (var header in source.Content.Headers)
+                {
+                    if (header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    response.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+            }
+
+            return response;
         }
 
     }
