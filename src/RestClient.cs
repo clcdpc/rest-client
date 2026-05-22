@@ -70,13 +70,13 @@ namespace Clc.Rest
         public IRestResponse<T> Execute<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null) => ExecuteAsync<T>(method, url, parameters, body).Result;
         public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null) =>
             await ExecuteAsync<T>(method, url, parameters, body, CancellationToken.None).ConfigureAwait(false);
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null, CancellationToken cancellationToken = default) =>
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null, CancellationToken cancellationToken) =>
             await ExecuteAsync<T>(new RestRequest(method, url, body, parameters), cancellationToken).ConfigureAwait(false);
 
         public IRestResponse<T> Execute<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null) => ExecuteAsync<T>(url, method, parameters, body).Result;
         public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null) =>
             await ExecuteAsync<T>(url, method, parameters, body, CancellationToken.None).ConfigureAwait(false);
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null, CancellationToken cancellationToken = default) =>
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null, CancellationToken cancellationToken) =>
             await ExecuteAsync<T>(new RestRequest(method ?? HttpMethod.Get, url, body, parameters), cancellationToken).ConfigureAwait(false);
 
         public virtual T FormatResponse<T>(HttpResponseMessage response)
@@ -135,7 +135,7 @@ namespace Clc.Rest
         public async Task<IRestResponse<T>> ExecuteAsync<T>(RestRequest request) =>
             await ExecuteAsync<T>(request, CancellationToken.None).ConfigureAwait(false);
 
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken = default)
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken)
         {
             PreformatRestRequest(request);
 
