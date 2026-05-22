@@ -2,6 +2,16 @@
 
 A simple library for making REST requests.
 
+## Async cancellation and exception behavior
+
+`RestClient` async APIs support overloads that accept a `CancellationToken`.
+
+- The token is passed to `HttpClient.SendAsync`.
+- The token is passed when reading request/response content in async flows.
+- `ExecuteAsync` captures exceptions into `IRestResponse.Exception` (including `OperationCanceledException`, `HttpRequestException`, and deserialization exceptions) instead of propagating them.
+
+This means canceled requests return a response object with `Exception` set to an `OperationCanceledException`.
+
 ## Request `Body` and `Parameters` behavior
 
 `RestClient` applies `Body` and `Parameters` according to HTTP method:
