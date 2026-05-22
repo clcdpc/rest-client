@@ -147,19 +147,20 @@ namespace Clc.Rest
             AddBody(request, httpRequest);
             AddParameters(request, httpRequest);
 
-            var requestBodyString = httpRequest.Content == null
-                ? null
-                : await httpRequest.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            var response = new RestResponse<T>(httpRequest, requestBodyString);
+            var response = new RestResponse<T>(httpRequest, null);
 
             try
             {
+                response.BodyString = httpRequest.Content == null
+                    ? null
+                    : await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false);
+
                 var sw = Stopwatch.StartNew();
                 var _response = await Client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
                 response.ResponseTime = sw.ElapsedMilliseconds;
                 var responseContent = _response.Content == null
                     ? null
-                    : await _response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    : await ReadContentAsStringAsync(_response.Content, cancellationToken).ConfigureAwait(false);
                 response.Response = new HttpResponse(_response, responseContent);
 
                 if (request.FormatOutput != null)
@@ -286,6 +287,14 @@ namespace Clc.Rest
 
             var separator = pathAndQuery.Contains("?") ? "&" : "?";
             return new Uri($"{pathAndQuery}{separator}{queryToAppend}{fragment}", UriKind.Relative);
+        }
+
+        private static async Task<string> ReadContentAsStringAsync(HttpContent content, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var value = await content.ReadAsStringAsync().ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return value;
         }
 
     }

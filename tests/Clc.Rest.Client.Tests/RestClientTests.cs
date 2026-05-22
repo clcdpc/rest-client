@@ -246,6 +246,20 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public async Task ExecuteAsync_With_Body_When_Cancelled_Before_Send_Captures_OperationCanceledException()
+    {
+        var tokenSource = new CancellationTokenSource();
+        tokenSource.Cancel();
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>("/data", HttpMethod.Post, body: new { Name = "Body" }, cancellationToken: tokenSource.Token);
+
+        Assert.IsInstanceOfType<OperationCanceledException>(response.Exception);
+        Assert.IsNull(handler.LastRequest);
+    }
+
+    [TestMethod]
     public async Task ExecuteAsync_When_SendAsync_Throws_HttpRequestException_Captures_Exception()
     {
         var handler = new FakeHttpMessageHandler(_ => throw new HttpRequestException("network"));

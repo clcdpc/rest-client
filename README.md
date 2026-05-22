@@ -7,7 +7,7 @@ A simple library for making REST requests.
 `ExecuteAsync<T>` overloads accept an optional `CancellationToken cancellationToken = default`.
 
 - The token is passed to `HttpClient.SendAsync`.
-- The same token is passed to async request/response content reads (`ReadAsStringAsync`).
+- For async request/response content reads, cancellation is honored cooperatively around content reads.
 - `RestClient` captures exceptions in `IRestResponse.Exception` instead of propagating them, including:
   - `OperationCanceledException` when cancellation occurs (including cancellation before `SendAsync`).
   - `HttpRequestException` from `SendAsync`.
