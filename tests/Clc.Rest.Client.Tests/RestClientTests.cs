@@ -230,7 +230,34 @@ public class RestClientTests
 
         await client.ExecuteAsync<string>("/data", cancellationToken: tokenSource.Token);
 
-        Assert.IsTrue(handler.LastCancellationToken.CanBeCanceled);
+        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_FormatOutputAsync_Receives_Already_Read_Content()
+    {
+        var content = new ThrowOnSecondReadContent("from formatter");
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+        var client = CreateClient(handler);
+        var request = new RestRequest(HttpMethod.Get, "/data");
+        string capturedContent = string.Empty;
+        CancellationToken capturedToken = default;
+
+        request.FormatOutputAsync = (_, formatterContent, cancellationToken) =>
+        {
+            capturedContent = formatterContent;
+            capturedToken = cancellationToken;
+            return Task.FromResult<object>($"formatted:{formatterContent}");
+        };
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("formatted:from formatter", response.Data);
+        Assert.AreEqual("from formatter", capturedContent);
+        Assert.AreEqual(TestContext.CancellationToken, capturedToken);
+        Assert.AreEqual(1, content.ReadCount);
+        Assert.AreEqual("from formatter", response.Response.Content);
     }
 
     [TestMethod]

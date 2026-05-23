@@ -60,7 +60,7 @@ await client.ExecuteAsync<MyDto>(
 Before (legacy formatter override path removed):
 
 ```csharp
-public override MyDto FormatResponse<MyDto>(HttpResponseMessage response)
+public override T FormatResponse<T>(HttpResponseMessage response)
 {
     // old formatter read response.Content directly
 }
