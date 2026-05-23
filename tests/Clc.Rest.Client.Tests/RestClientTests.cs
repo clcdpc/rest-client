@@ -441,6 +441,57 @@ public class RestClientTests
         _ = httpResponse.ToString();
     }
 
+
+    [TestMethod]
+    public void IRestClient_Async_Api_Shape_Matches_Simplified_Surface()
+    {
+        var methods = typeof(Clc.Rest.IRestClient).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        var executeAsync = methods.Where(m => m.Name == "ExecuteAsync").ToList();
+
+        Assert.HasCount(3, executeAsync);
+        Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
+            m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 2
+            && m.GetParameters()[0].ParameterType == typeof(RestRequest)
+            && m.GetParameters()[1].ParameterType == typeof(CancellationToken)));
+        Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
+            m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 2
+            && m.GetParameters()[0].ParameterType == typeof(string)
+            && m.GetParameters()[1].ParameterType == typeof(CancellationToken)));
+        Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
+            m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 3
+            && m.GetParameters()[0].ParameterType == typeof(HttpMethod)
+            && m.GetParameters()[1].ParameterType == typeof(string)
+            && m.GetParameters()[2].ParameterType == typeof(CancellationToken)));
+
+        Assert.IsNotNull(methods.SingleOrDefault(m =>
+            m.Name == "Execute"
+            && m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 1
+            && m.GetParameters()[0].ParameterType == typeof(RestRequest)));
+
+        var names = methods.Select(m => m.Name).ToList();
+        Assert.DoesNotContain("GetAsync", names);
+        Assert.DoesNotContain("PostAsync", names);
+        Assert.DoesNotContain("PutAsync", names);
+        Assert.DoesNotContain("PatchAsync", names);
+        Assert.DoesNotContain("DeleteAsync", names);
+    }
+
+    [TestMethod]
+    public async Task IRestClient_ExecuteAsync_Can_Call_Concrete_RestClient()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("expected"));
+        IRestClient client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>("/data", TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("expected", response.Data);
+    }
+
     [TestMethod]
     public void Public_Async_Api_Shape_Is_Simplified()
     {
