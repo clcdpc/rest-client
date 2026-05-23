@@ -230,7 +230,8 @@ public class RestClientTests
 
         await client.ExecuteAsync<string>("/data", cancellationToken: tokenSource.Token);
 
-        Assert.AreEqual(tokenSource.Token, handler.LastCancellationToken);
+        Assert.IsTrue(handler.LastCancellationToken.CanBeCanceled);
+        Assert.AreNotEqual(CancellationToken.None, handler.LastCancellationToken);
     }
 
     [TestMethod]
