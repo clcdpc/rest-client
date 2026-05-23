@@ -7,13 +7,13 @@
 		<Description>simple http client library</Description>
 		<PackageTags>clc, rest, http</PackageTags>
 		<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
-		<Version>2.2.1-beta</Version>
+		<Version>3.0.0-alpha.1</Version>
 		<SignAssembly>False</SignAssembly>
 		<IncludeSymbols>True</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageId>Clc.Rest.Client</PackageId>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-		<PackageReleaseNotes>Switch parameter order for async methods</PackageReleaseNotes>
+		<PackageReleaseNotes>Breaking alpha: simplify async API to RestRequest/url/method overloads, remove legacy response formatter path, and require content-aware async formatting.</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -22,7 +22,7 @@ namespace Clc.Rest.Models
         /// The request that was sent to the PAPI service
         /// </summary>
         public HttpRequestMessage Request { get; set; } = new HttpRequestMessage();
-        public string BodyString { get; set; }
+        public string BodyString { get; set; } = string.Empty;
 
         public Exception Exception { get; set; }
 

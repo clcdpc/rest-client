@@ -23,6 +23,8 @@ namespace Clc.Rest
         /// </summary>
         HttpRequestMessage Request { get; set; }
 
+        string BodyString { get; set; }
+
         Exception Exception { get; set; }
 
         /// <summary>
