@@ -210,7 +210,7 @@ public class RestClientTests
     [TestMethod]
     public async Task ExecuteAsync_Response_Content_Is_Read_Only_Once()
     {
-        var content = new SingleReadTrackingContent("{\"Name\":\"Once\"}");
+        var content = new ThrowOnSecondReadContent("{\"Name\":\"Once\"}");
         var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
         var client = CreateClient(handler);
 
@@ -364,22 +364,22 @@ public class RestClientTests
         public string Name { get; set; } = string.Empty;
     }
 
-    private sealed class SingleReadTrackingContent(string body) : StringContent(body, Encoding.UTF8, "application/json")
+    private sealed class ThrowOnSecondReadContent : HttpContent
     {
-        public int ReadCount { get; private set; }
+        private readonly byte[] _payloadBytes;
 
-        protected override Task<Stream> CreateContentReadStreamAsync()
+        public ThrowOnSecondReadContent(string body)
         {
-            ReadCount++;
-            return base.CreateContentReadStreamAsync();
+            _payloadBytes = Encoding.UTF8.GetBytes(body);
+            Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json")
+            {
+                CharSet = Encoding.UTF8.WebName
+            };
         }
-    }
 
-    private sealed class ThrowOnSecondReadContent(string body) : StringContent(body, Encoding.UTF8, "application/json")
-    {
         public int ReadCount { get; private set; }
 
-        protected override Task<Stream> CreateContentReadStreamAsync()
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
         {
             ReadCount++;
             if (ReadCount > 1)
@@ -387,7 +387,13 @@ public class RestClientTests
                 throw new InvalidOperationException("Content stream was read more than once.");
             }
 
-            return base.CreateContentReadStreamAsync();
+            return stream.WriteAsync(_payloadBytes, 0, _payloadBytes.Length);
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = _payloadBytes.Length;
+            return true;
         }
     }
 }
