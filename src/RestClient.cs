@@ -80,40 +80,46 @@ namespace Clc.Rest
 
         public async Task<IRestResponse<T>> ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken = default)
         {
-            PreformatRestRequest(request);
-
-            var httpRequest = new HttpRequestMessage(request.Method, BuildUrl(request));
-            httpRequest.Headers.Accept.Add(Accept);
-
-            AddHeaders(request, httpRequest);
-            AddAuthenticator(request, httpRequest);
-            AddBody(request, httpRequest);
-            AddParameters(request, httpRequest);
-
-            var response = new RestResponse<T>(httpRequest, null);
+            var response = new RestResponse<T>();
 
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
+                request = PreformatRestRequest(request ?? throw new ArgumentNullException(nameof(request)));
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var httpRequest = new HttpRequestMessage(request.Method, BuildUrl(request));
+                response.Request = httpRequest;
+                httpRequest.Headers.Accept.Add(Accept);
+
+                AddHeaders(request, httpRequest);
+                AddAuthenticator(request, httpRequest);
+                AddBody(request, httpRequest);
+                AddParameters(request, httpRequest);
+
                 response.BodyString = httpRequest.Content == null
                     ? null
                     : await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false);
 
                 var sw = Stopwatch.StartNew();
-                var _response = await Client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-                response.ResponseTime = sw.ElapsedMilliseconds;
-                var responseContent = _response.Content == null
-                    ? null
-                    : await ReadContentAsStringAsync(_response.Content, cancellationToken).ConfigureAwait(false);
-                response.Response = new HttpResponse(_response, responseContent);
+                using (var httpResponse = await Client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false))
+                {
+                    response.ResponseTime = sw.ElapsedMilliseconds;
+                    var responseContent = httpResponse.Content == null
+                        ? null
+                        : await ReadContentAsStringAsync(httpResponse.Content, cancellationToken).ConfigureAwait(false);
+                    response.Response = new HttpResponse(httpResponse, responseContent);
 
-                if (request.FormatOutputAsync != null)
-                {
-                    response.Data = (T)await request.FormatOutputAsync(_response, responseContent, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    response.Data = await FormatResponseAsync<T>(_response, responseContent, cancellationToken).ConfigureAwait(false);
+                    if (request.FormatOutputAsync != null)
+                    {
+                        response.Data = (T)await request.FormatOutputAsync(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        response.Data = await FormatResponseAsync<T>(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
+                    }
                 }
             }
             catch (Exception ex)
