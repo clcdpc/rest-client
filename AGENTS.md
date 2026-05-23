@@ -67,8 +67,9 @@ Add tests for any change involving `Body`, `Parameters`, URL building, query str
 - Use `Deserializer` for response deserialization.
 - Preserve special handling for `string` and `bool` responses unless intentionally changing behavior.
 - Preserve `PreDeserialize`.
-- Preserve `FormatOutput`.
-- Preserve overridden `FormatResponse<T>` behavior.
+- Preserve `RestRequest.FormatOutputAsync(HttpResponseMessage response, string content, CancellationToken cancellationToken)` behavior.
+- Preserve overridden `RestClient.FormatResponseAsync<T>(HttpResponseMessage response, string content, CancellationToken cancellationToken = default)` behavior.
+- Formatting code should use the supplied `content` string and should not read `response.Content`.
 - Add tests when changing serialization, deserialization, formatting, or preprocessing.
 
 ## Exception and cancellation behavior

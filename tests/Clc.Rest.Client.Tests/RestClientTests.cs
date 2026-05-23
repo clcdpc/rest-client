@@ -290,6 +290,46 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public async Task ExecuteAsync_When_Request_Has_Body_And_Token_PreCanceled_Does_Not_Run_Serialization_Or_Send()
+    {
+        var tokenSource = new CancellationTokenSource();
+        tokenSource.Cancel();
+        var serializer = new TrackingSerializer();
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        var request = new RestRequest(HttpMethod.Post, "/data", body: new { Name = "Body" })
+        {
+            Serializer = serializer
+        };
+
+        var response = await client.ExecuteAsync<string>(request, tokenSource.Token);
+
+        Assert.IsInstanceOfType<OperationCanceledException>(response.Exception);
+        Assert.AreEqual(0, serializer.SerializeCalls);
+        Assert.IsNull(handler.LastRequest);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_When_Request_Has_Authenticator_And_Token_PreCanceled_Does_Not_Run_Authentication_Or_Send()
+    {
+        var tokenSource = new CancellationTokenSource();
+        tokenSource.Cancel();
+        var authenticator = new TrackingAuthenticator();
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        var request = new RestRequest(HttpMethod.Get, "/data")
+        {
+            Authenticator = authenticator
+        };
+
+        var response = await client.ExecuteAsync<string>(request, tokenSource.Token);
+
+        Assert.IsInstanceOfType<OperationCanceledException>(response.Exception);
+        Assert.AreEqual(0, authenticator.AuthenticateCalls);
+        Assert.IsNull(handler.LastRequest);
+    }
+
+    [TestMethod]
     public async Task ExecuteAsync_When_SendAsync_Throws_HttpRequestException_Captures_Exception()
     {
         var handler = new FakeHttpMessageHandler(_ => throw new HttpRequestException("network"));
@@ -309,6 +349,66 @@ public class RestClientTests
         var response = await client.ExecuteAsync<Payload>("/data", TestContext.CancellationToken);
 
         Assert.IsNotNull(response.Exception);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_When_Serializer_Throws_During_AddBody_Captures_Exception()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        var request = new RestRequest(HttpMethod.Post, "/data", body: new { Name = "Body" })
+        {
+            Serializer = new ThrowingSerializer(new InvalidOperationException("serialize fail"))
+        };
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsInstanceOfType<InvalidOperationException>(response.Exception);
+        Assert.IsNotNull(response.Request);
+        Assert.IsNull(handler.LastRequest);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_When_Authenticator_Throws_During_AddAuthenticator_Captures_Exception()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        var request = new RestRequest(HttpMethod.Get, "/data")
+        {
+            Authenticator = new ThrowingAuthenticator(new InvalidOperationException("auth fail"))
+        };
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsInstanceOfType<InvalidOperationException>(response.Exception);
+        Assert.IsNotNull(response.Request);
+        Assert.IsNull(handler.LastRequest);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_When_Request_Is_Null_Captures_Exception()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>((RestRequest)null!, TestContext.CancellationToken);
+
+        Assert.IsNotNull(response.Exception);
+        Assert.IsInstanceOfType<NullReferenceException>(response.Exception);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Disposes_HttpResponseMessage_After_Completion()
+    {
+        var trackingContent = new DisposeTrackingHttpContent("{\"Name\":\"done\"}");
+        var handler = new FakeHttpMessageHandler(_ => new DisposableTrackingHttpResponseMessage(HttpStatusCode.OK) { Content = trackingContent });
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<Payload>("/data", TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.IsTrue(handler.LastResponseWasDisposed);
+        Assert.IsTrue(trackingContent.IsDisposed);
     }
 
 
@@ -374,12 +474,15 @@ public class RestClientTests
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _callback = callback;
         public HttpRequestMessage? LastRequest { get; private set; }
         public CancellationToken LastCancellationToken { get; private set; }
+        public bool LastResponseWasDisposed => (LastResponse as DisposableTrackingHttpResponseMessage)?.IsDisposed ?? false;
+        private HttpResponseMessage? LastResponse { get; set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequest = request;
             LastCancellationToken = cancellationToken;
-            return Task.FromResult(_callback(request));
+            LastResponse = _callback(request);
+            return Task.FromResult(LastResponse);
         }
     }
 
@@ -423,5 +526,79 @@ public class RestClientTests
             length = _payloadBytes.Length;
             return true;
         }
+    }
+
+    private sealed class DisposeTrackingHttpContent : HttpContent
+    {
+        private readonly byte[] _payloadBytes;
+
+        public DisposeTrackingHttpContent(string body)
+        {
+            _payloadBytes = Encoding.UTF8.GetBytes(body);
+            Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        }
+
+        public bool IsDisposed { get; private set; }
+
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+            => stream.WriteAsync(_payloadBytes, 0, _payloadBytes.Length);
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = _payloadBytes.Length;
+            return true;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            IsDisposed = true;
+        }
+    }
+
+    private sealed class DisposableTrackingHttpResponseMessage : HttpResponseMessage
+    {
+        public DisposableTrackingHttpResponseMessage(HttpStatusCode statusCode) : base(statusCode) { }
+
+        public bool IsDisposed { get; private set; }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            IsDisposed = true;
+        }
+    }
+
+    private sealed class TrackingSerializer : Clc.Rest.ISerializer
+    {
+        public int SerializeCalls { get; private set; }
+        public string MediaType => "application/json";
+        public string Serialize(object item, bool ignoreNullValues = true)
+        {
+            SerializeCalls++;
+            return "{}";
+        }
+    }
+
+    private sealed class ThrowingSerializer(Exception exceptionToThrow) : Clc.Rest.ISerializer
+    {
+        public string MediaType => "application/json";
+        public string Serialize(object item, bool ignoreNullValues = true) => throw exceptionToThrow;
+    }
+
+    private sealed class TrackingAuthenticator : Clc.Rest.Auth.IAuthenticator
+    {
+        public int AuthenticateCalls { get; private set; }
+
+        public HttpRequestMessage Authenticate(HttpClient client, HttpRequestMessage request)
+        {
+            AuthenticateCalls++;
+            return request;
+        }
+    }
+
+    private sealed class ThrowingAuthenticator(Exception exceptionToThrow) : Clc.Rest.Auth.IAuthenticator
+    {
+        public HttpRequestMessage Authenticate(HttpClient client, HttpRequestMessage request) => throw exceptionToThrow;
     }
 }
