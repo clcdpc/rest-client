@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -23,7 +22,9 @@ namespace Clc.Rest.Models
         /// <summary>
         /// Headers
         /// </summary>
-        public HttpResponseHeaders Headers { get; }
+        public Dictionary<string, string[]> Headers { get; set; } = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+
+        public Dictionary<string, string[]> ContentHeaders { get; set; } = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Does status code indicate success
@@ -73,7 +74,15 @@ namespace Clc.Rest.Models
         {
             Content = content;
             ContentType = response.Content?.Headers?.ContentType?.ToString() ?? "";
-            Headers = response.Headers;
+            Headers = response.Headers.ToDictionary(
+                header => header.Key,
+                header => header.Value.ToArray(),
+                StringComparer.OrdinalIgnoreCase);
+            ContentHeaders = response.Content?.Headers.ToDictionary(
+                header => header.Key,
+                header => header.Value.ToArray(),
+                StringComparer.OrdinalIgnoreCase)
+                ?? new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
             IsSuccessStatusCode = response.IsSuccessStatusCode;
             ReasonPhrase = response.ReasonPhrase;
             RequestMessage = response.RequestMessage;

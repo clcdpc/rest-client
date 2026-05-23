@@ -401,6 +401,30 @@ public class RestClientTests
         Assert.AreEqual("{\"Name\":\"Disposed\"}", response.Response.Content);
     }
 
+
+    [TestMethod]
+    public async Task ExecuteAsync_Copies_Response_Headers_Before_Disposing_HttpResponseMessage()
+    {
+        var responseMessage = new DisposableTrackingHttpResponseMessage(HttpStatusCode.OK);
+        responseMessage.Headers.Add("X-Test-Header", "response-value");
+        responseMessage.Content = new DisposableTrackingContent("plain-text");
+        responseMessage.Content.Headers.TryAddWithoutValidation("X-Content-Test", "content-value");
+
+        var handler = new FakeHttpMessageHandler(_ => responseMessage);
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>("/data", TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.IsTrue(responseMessage.IsDisposed);
+        Assert.AreEqual("plain-text", response.Response.Content);
+        Assert.IsTrue(response.Response.Headers.ContainsKey("X-Test-Header"));
+        CollectionAssert.Contains(response.Response.Headers["X-Test-Header"], "response-value");
+        Assert.IsTrue(response.Response.Headers.ContainsKey("x-test-header"));
+        Assert.IsTrue(response.Response.ContentHeaders.ContainsKey("X-Content-Test"));
+        CollectionAssert.Contains(response.Response.ContentHeaders["X-Content-Test"], "content-value");
+    }
+
     [TestMethod]
     [DataRow(true)]
     [DataRow(false)]
