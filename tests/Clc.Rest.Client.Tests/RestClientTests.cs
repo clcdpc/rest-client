@@ -444,10 +444,13 @@ public class RestClientTests
     [TestMethod]
     public void Public_Async_Api_Shape_Is_Simplified()
     {
-        var methods = typeof(Clc.Rest.RestClient).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        var executeAsync = methods.Where(m => m.Name == "ExecuteAsync").ToList();
+        var clientMethods = typeof(Clc.Rest.RestClient).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        var interfaceMethods = typeof(Clc.Rest.IRestClient).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        var executeAsync = clientMethods.Where(m => m.Name == "ExecuteAsync").ToList();
+        var interfaceExecuteAsync = interfaceMethods.Where(m => m.Name == "ExecuteAsync").ToList();
 
         Assert.HasCount(3, executeAsync);
+        Assert.HasCount(3, interfaceExecuteAsync);
         Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
             m.IsGenericMethodDefinition
             && m.GetParameters().Length == 2
@@ -464,16 +467,55 @@ public class RestClientTests
             && m.GetParameters()[0].ParameterType == typeof(HttpMethod)
             && m.GetParameters()[1].ParameterType == typeof(string)
             && m.GetParameters()[2].ParameterType == typeof(CancellationToken)));
+        Assert.IsNotNull(interfaceExecuteAsync.SingleOrDefault(m =>
+            m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 2
+            && m.GetParameters()[0].ParameterType == typeof(RestRequest)
+            && m.GetParameters()[1].ParameterType == typeof(CancellationToken)));
+        Assert.IsNotNull(interfaceExecuteAsync.SingleOrDefault(m =>
+            m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 2
+            && m.GetParameters()[0].ParameterType == typeof(string)
+            && m.GetParameters()[1].ParameterType == typeof(CancellationToken)));
+        Assert.IsNotNull(interfaceExecuteAsync.SingleOrDefault(m =>
+            m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 3
+            && m.GetParameters()[0].ParameterType == typeof(HttpMethod)
+            && m.GetParameters()[1].ParameterType == typeof(string)
+            && m.GetParameters()[2].ParameterType == typeof(CancellationToken)));
+        Assert.IsNotNull(interfaceMethods.SingleOrDefault(m =>
+            m.Name == "Execute"
+            && m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 1
+            && m.GetParameters()[0].ParameterType == typeof(RestRequest)));
 
-        var names = methods.Select(m => m.Name).ToList();
+        var names = clientMethods.Select(m => m.Name).ToList();
+        var interfaceNames = interfaceMethods.Select(m => m.Name).ToList();
         Assert.DoesNotContain("GetAsync", names);
         Assert.DoesNotContain("PostAsync", names);
         Assert.DoesNotContain("PutAsync", names);
         Assert.DoesNotContain("PatchAsync", names);
         Assert.DoesNotContain("DeleteAsync", names);
+        Assert.DoesNotContain("GetAsync", interfaceNames);
+        Assert.DoesNotContain("PostAsync", interfaceNames);
+        Assert.DoesNotContain("PutAsync", interfaceNames);
+        Assert.DoesNotContain("PatchAsync", interfaceNames);
+        Assert.DoesNotContain("DeleteAsync", interfaceNames);
         Assert.DoesNotContain("FormatResponse", names);
         Assert.DoesNotContain("IsFormatResponseOverridden", names);
         Assert.DoesNotContain("CreateCompatibilityResponse", names);
+    }
+
+    [TestMethod]
+    public async Task IRestClient_ExecuteAsync_Can_Call_Concrete_RestClient()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("\"expected\""));
+        IRestClient client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>("/data", TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("\"expected\"", response.Data);
     }
 
     private static TestRestClient CreateClient(HttpMessageHandler handler)
