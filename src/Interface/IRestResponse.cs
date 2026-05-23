@@ -22,6 +22,7 @@ namespace Clc.Rest
         /// The request that was sent to the PAPI service
         /// </summary>
         HttpRequestMessage Request { get; set; }
+        string BodyString { get; set; }
 
         Exception Exception { get; set; }
 

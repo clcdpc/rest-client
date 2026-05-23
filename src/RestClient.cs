@@ -47,67 +47,12 @@ namespace Clc.Rest
             }
         }
 
-        public IRestResponse<T> Get<T>(string url, Dictionary<string, string> parameters = null) => GetAsync<T>(url, parameters).Result;
-        public async Task<IRestResponse<T>> GetAsync<T>(string url, Dictionary<string, string> parameters = null) => 
-            await ExecuteAsync<T>(new RestRequest(HttpMethod.Get, url, parameters: parameters)).ConfigureAwait(false);
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, CancellationToken cancellationToken = default) =>
+            await ExecuteAsync<T>(new RestRequest(method, url), cancellationToken).ConfigureAwait(false);
+        public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, CancellationToken cancellationToken = default) =>
+            await ExecuteAsync<T>(new RestRequest(HttpMethod.Get, url), cancellationToken).ConfigureAwait(false);
 
-        public IRestResponse<T> Post<T>(string url, Dictionary<string, string> parameters = null, object body = null) => PostAsync<T>(url, body, parameters).Result;
-        public async Task<IRestResponse<T>> PostAsync<T>(string url, object body = null, Dictionary<string, string> parameters = null) =>
-             await ExecuteAsync<T>(new RestRequest(HttpMethod.Post, url, body, parameters)).ConfigureAwait(false);
-
-        public IRestResponse<T> Patch<T>(string url, Dictionary<string, string> parameters = null, object body = null) => PatchAsync<T>(url, body, parameters).Result;
-        public async Task<IRestResponse<T>> PatchAsync<T>(string url, object body = null, Dictionary<string, string> parameters = null) =>
-             await ExecuteAsync<T>(new RestRequest(new HttpMethod("PATCH"), url, body, parameters)).ConfigureAwait(false);
-
-        public IRestResponse<T> Put<T>(string url, Dictionary<string, string> parameters = null, object body = null) => PutAsync<T>(url, body, parameters).Result;
-        public async Task<IRestResponse<T>> PutAsync<T>(string url, object body = null, Dictionary<string, string> parameters = null) =>
-             await ExecuteAsync<T>(new RestRequest(HttpMethod.Put, url, body, parameters)).ConfigureAwait(false);
-
-        public IRestResponse<T> Delete<T>(string url, Dictionary<string, string> parameters = null, object body = null) => DeleteAsync<T>(url, body, parameters).Result;
-        public async Task<IRestResponse<T>> DeleteAsync<T>(string url, object body = null, Dictionary<string, string> parameters = null) =>
-             await ExecuteAsync<T>(new RestRequest(HttpMethod.Delete, url, body, parameters)).ConfigureAwait(false);
-
-        public IRestResponse<T> Execute<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null) => ExecuteAsync<T>(method, url, parameters, body).Result;
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null) =>
-            await ExecuteAsync<T>(method, url, parameters, body, CancellationToken.None).ConfigureAwait(false);
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, Dictionary<string, string> parameters = null, object body = null, CancellationToken cancellationToken = default) =>
-            await ExecuteAsync<T>(new RestRequest(method, url, body, parameters), cancellationToken).ConfigureAwait(false);
-
-        public IRestResponse<T> Execute<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null) => ExecuteAsync<T>(url, method, parameters, body).Result;
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null) =>
-            await ExecuteAsync<T>(url, method, parameters, body, CancellationToken.None).ConfigureAwait(false);
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, HttpMethod method = null, Dictionary<string, string> parameters = null, object body = null, CancellationToken cancellationToken = default) =>
-            await ExecuteAsync<T>(new RestRequest(method ?? HttpMethod.Get, url, body, parameters), cancellationToken).ConfigureAwait(false);
-
-        public virtual T FormatResponse<T>(HttpResponseMessage response)
-        {
-            T output = default;
-
-            if (response.IsSuccessStatusCode)
-            {
-                var content = response.Content == null
-                    ? string.Empty
-                    : response.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-                content = PreDeserialize(content);
-
-                if (typeof(T) == typeof(string))
-                {
-                    output = (T)Convert.ChangeType(content, typeof(T));
-                }
-                else if (typeof(T) == typeof(bool))
-                {
-                    output = (T)Convert.ChangeType(response.IsSuccessStatusCode, typeof(T));
-                }
-                else
-                {
-                    output = Deserializer.Deserialize<T>(content);
-                }
-            }
-
-            return output;
-        }
-
-        public virtual Task<T> FormatResponseAsync<T>(HttpResponseMessage response, string content)
+        public virtual Task<T> FormatResponseAsync<T>(HttpResponseMessage response, string content, CancellationToken cancellationToken = default)
         {
             T output = default;
 
@@ -131,9 +76,6 @@ namespace Clc.Rest
 
             return Task.FromResult(output);
         }
-
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(RestRequest request) =>
-            await ExecuteAsync<T>(request, CancellationToken.None).ConfigureAwait(false);
 
         public async Task<IRestResponse<T>> ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken = default)
         {
@@ -163,17 +105,17 @@ namespace Clc.Rest
                     : await ReadContentAsStringAsync(_response.Content, cancellationToken).ConfigureAwait(false);
                 response.Response = new HttpResponse(_response, responseContent);
 
-                if (request.FormatOutput != null)
+                if (request.FormatOutputAsync != null)
+                {
+                    response.Data = (T)await request.FormatOutputAsync(_response, responseContent, cancellationToken).ConfigureAwait(false);
+                }
+                else if (request.FormatOutput != null)
                 {
                     response.Data = (T)request.FormatOutput(_response);
                 }
-                else if (IsFormatResponseOverridden())
-                {
-                    response.Data = FormatResponse<T>(_response);
-                }
                 else
                 {
-                    response.Data = await FormatResponseAsync<T>(_response, responseContent).ConfigureAwait(false);
+                    response.Data = await FormatResponseAsync<T>(_response, responseContent, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -184,21 +126,7 @@ namespace Clc.Rest
             return response;
         }
 
-        public IRestResponse<T> Execute<T>(RestRequest request) => ExecuteAsync<T>(request).Result;
-
-        private bool IsFormatResponseOverridden()
-        {
-            var method = GetType()
-                .GetMethods()
-                .FirstOrDefault(m =>
-                    m.Name == nameof(FormatResponse)
-                    && m.IsGenericMethod
-                    && m.GetGenericArguments().Length == 1
-                    && m.GetParameters().Length == 1
-                    && m.GetParameters()[0].ParameterType == typeof(HttpResponseMessage));
-
-            return method?.DeclaringType != typeof(RestClient);
-        }
+        public IRestResponse<T> Execute<T>(RestRequest request) => ExecuteAsync<T>(request, CancellationToken.None).Result;
 
         public virtual RestRequest PreformatRestRequest(RestRequest request) => request;
         public virtual string PreDeserialize(string responseBody) => responseBody;

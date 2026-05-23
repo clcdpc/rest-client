@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Clc.Rest.Models
 {
@@ -15,6 +17,7 @@ namespace Clc.Rest.Models
         public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
         public Dictionary<string, string> Parameters { get; set; } = new Dictionary<string, string>();
         public Func<HttpResponseMessage, object> FormatOutput { get; set; }
+        public Func<HttpResponseMessage, string, CancellationToken, Task<object>> FormatOutputAsync { get; set; }
         public ISerializer Serializer { get; set; } = null;
         public IAuthenticator Authenticator { get; set; } = null;
 
