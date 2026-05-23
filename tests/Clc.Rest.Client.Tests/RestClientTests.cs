@@ -476,6 +476,57 @@ public class RestClientTests
         Assert.DoesNotContain("CreateCompatibilityResponse", names);
     }
 
+    [TestMethod]
+    public void IRestClient_Public_Async_Api_Shape_Is_Simplified()
+    {
+        var methods = typeof(Clc.Rest.IRestClient).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        var executeAsync = methods.Where(m => m.Name == "ExecuteAsync").ToList();
+
+        Assert.HasCount(3, executeAsync);
+        Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
+            m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 2
+            && m.GetParameters()[0].ParameterType == typeof(RestRequest)
+            && m.GetParameters()[1].ParameterType == typeof(CancellationToken)));
+        Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
+            m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 2
+            && m.GetParameters()[0].ParameterType == typeof(string)
+            && m.GetParameters()[1].ParameterType == typeof(CancellationToken)));
+        Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
+            m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 3
+            && m.GetParameters()[0].ParameterType == typeof(HttpMethod)
+            && m.GetParameters()[1].ParameterType == typeof(string)
+            && m.GetParameters()[2].ParameterType == typeof(CancellationToken)));
+
+        var execute = methods.Where(m => m.Name == "Execute").ToList();
+        Assert.HasCount(1, execute);
+        Assert.IsNotNull(execute.SingleOrDefault(m =>
+            m.IsGenericMethodDefinition
+            && m.GetParameters().Length == 1
+            && m.GetParameters()[0].ParameterType == typeof(RestRequest)));
+
+        var names = methods.Select(m => m.Name).ToList();
+        Assert.DoesNotContain("GetAsync", names);
+        Assert.DoesNotContain("PostAsync", names);
+        Assert.DoesNotContain("PutAsync", names);
+        Assert.DoesNotContain("PatchAsync", names);
+        Assert.DoesNotContain("DeleteAsync", names);
+    }
+
+    [TestMethod]
+    public async Task IRestClient_ExecuteAsync_Can_Call_Concrete_RestClient()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("plain-text"));
+        IRestClient client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>("/data", TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("plain-text", response.Data);
+    }
+
     private static TestRestClient CreateClient(HttpMessageHandler handler)
         => new(new HttpClient(handler)) { BaseUrl = "https://example.test" };
 
