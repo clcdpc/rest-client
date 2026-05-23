@@ -80,7 +80,6 @@ namespace Clc.Rest
 
         public async Task<IRestResponse<T>> ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
             PreformatRestRequest(request);
 
             var httpRequest = new HttpRequestMessage(request.Method, BuildUrl(request));
@@ -95,6 +94,7 @@ namespace Clc.Rest
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 response.BodyString = httpRequest.Content == null
                     ? null
                     : await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false);
