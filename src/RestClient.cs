@@ -47,11 +47,6 @@ namespace Clc.Rest
             }
         }
 
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, CancellationToken cancellationToken = default) =>
-            await ExecuteAsync<T>(new RestRequest(method, url), cancellationToken).ConfigureAwait(false);
-
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, CancellationToken cancellationToken = default) =>
-            await ExecuteAsync<T>(new RestRequest(HttpMethod.Get, url), cancellationToken).ConfigureAwait(false);
 
         public virtual Task<T> FormatResponseAsync<T>(HttpResponseMessage response, string content, CancellationToken cancellationToken = default)
         {
@@ -150,11 +145,18 @@ namespace Clc.Rest
 
         protected virtual HttpRequestMessage AddBody(RestRequest request, HttpRequestMessage httpRequest)
         {
+            if (request.Content != null)
+            {
+                httpRequest.Content = request.Content;
+                return httpRequest;
+            }
+
             if (request.Body != null)
             {
                 var serializer = request.Serializer ?? Serializer;
                 httpRequest.Content = new StringContent(serializer.Serialize(request.Body), Encoding.UTF8, serializer.MediaType);
             }
+
             return httpRequest;
         }
 
@@ -181,28 +183,19 @@ namespace Clc.Rest
 
         protected virtual HttpRequestMessage AddParameters(RestRequest request, HttpRequestMessage httpRequest)
         {
-            if (!request.Parameters.Any())
+            if (!request.QueryParameters.Any())
             {
                 return httpRequest;
             }
 
-            if (request.Method == HttpMethod.Post && request.Body == null)
-            {
-                httpRequest.Content = new FormUrlEncodedContent(request.Parameters);
-                return httpRequest;
-            }
+            var nonEmptyParameters = request.QueryParameters
+                .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Key) && !string.IsNullOrWhiteSpace(parameter.Value))
+                .Select(parameter => $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}")
+                .ToList();
 
-            if (request.Method != HttpMethod.Post)
+            if (nonEmptyParameters.Any())
             {
-                var nonEmptyParameters = request.Parameters
-                    .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Key) && !string.IsNullOrWhiteSpace(parameter.Value))
-                    .Select(parameter => $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}")
-                    .ToList();
-
-                if (nonEmptyParameters.Any())
-                {
-                    httpRequest.RequestUri = AppendQueryString(httpRequest.RequestUri, string.Join("&", nonEmptyParameters));
-                }
+                httpRequest.RequestUri = AppendQueryString(httpRequest.RequestUri, string.Join("&", nonEmptyParameters));
             }
 
             return httpRequest;
