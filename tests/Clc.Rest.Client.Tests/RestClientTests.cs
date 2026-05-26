@@ -722,6 +722,49 @@ public class RestClientTests
         Assert.DoesNotContain("CreateCompatibilityResponse", names);
     }
 
+
+    [TestMethod]
+    public void HttpResponse_Does_Not_Expose_Sync_Content_Read_Constructor()
+    {
+        var constructors = typeof(HttpResponse).GetConstructors(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+        Assert.IsNull(constructors.SingleOrDefault(c =>
+            c.GetParameters().Length == 1
+            && c.GetParameters()[0].ParameterType == typeof(HttpResponseMessage)));
+
+        Assert.IsNotNull(constructors.SingleOrDefault(c =>
+            c.GetParameters().Length == 2
+            && c.GetParameters()[0].ParameterType == typeof(HttpResponseMessage)
+            && c.GetParameters()[1].ParameterType == typeof(string)));
+
+        Assert.IsNotNull(constructors.SingleOrDefault(c => c.GetParameters().Length == 0));
+    }
+
+    [TestMethod]
+    public void Public_Api_Does_Not_Expose_Sync_Execution_Or_Sync_Content_Reads()
+    {
+        var restClientMethodNames = typeof(Clc.Rest.RestClient)
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .Select(m => m.Name)
+            .ToList();
+        var iRestClientMethodNames = typeof(IRestClient)
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .Select(m => m.Name)
+            .ToList();
+        var httpResponseConstructors = typeof(HttpResponse).GetConstructors(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        var httpResponseMethodNames = typeof(HttpResponse)
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static)
+            .Select(m => m.Name)
+            .ToList();
+
+        Assert.DoesNotContain("Execute", restClientMethodNames);
+        Assert.DoesNotContain("Execute", iRestClientMethodNames);
+        Assert.IsNull(httpResponseConstructors.SingleOrDefault(c =>
+            c.GetParameters().Length == 1
+            && c.GetParameters()[0].ParameterType == typeof(HttpResponseMessage)));
+        Assert.DoesNotContain("ReadContentSynchronously", httpResponseMethodNames);
+    }
+
     [TestMethod]
     public async Task IRestClient_ExecuteAsync_Can_Call_Concrete_RestClient()
     {
