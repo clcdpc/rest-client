@@ -14,8 +14,14 @@ The public async request API is now:
 
 Async calls that need body, parameters, headers, serializer, authenticator, or per-request formatting should construct a `RestRequest`.
 
+If you need synchronous behavior, explicitly opt into blocking at the call site, for example:
+
+- `client.ExecuteAsync<T>(...).GetAwaiter().GetResult()`
+- `client.ExecuteAsync<T>(...).Result`
+
 Removed in this alpha:
 
+- synchronous `Execute<T>(RestRequest request)` wrappers
 - async verb helpers (`GetAsync`, `PostAsync`, `PutAsync`, `PatchAsync`, `DeleteAsync`)
 - async overloads that accept body/parameters directly outside `RestRequest`
 - legacy `FormatResponse<T>(HttpResponseMessage)` override path
