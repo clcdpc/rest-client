@@ -262,7 +262,6 @@ public class RestClientTests
     }
 
 
-
     [TestMethod]
     public async Task ExecuteAsync_Sends_Request_Returned_By_Authenticator()
     {
@@ -324,6 +323,8 @@ public class RestClientTests
         Assert.IsNull(response.Exception);
         Assert.AreEqual("replacement-body", response.BodyString);
         Assert.AreSame(replacementRequest, response.Request);
+        Assert.AreSame(replacementRequest, handler.LastRequest);
+        Assert.AreEqual("https://example.test/replaced-with-body", handler.LastRequest!.RequestUri!.AbsoluteUri);
     }
 
     [TestMethod]
