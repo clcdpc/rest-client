@@ -12,8 +12,11 @@
 		<IncludeSymbols>True</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageId>Clc.Rest.Client</PackageId>
+		<PackageProjectUrl>https://github.com/clcdpc/rest-client</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/clcdpc/rest-client</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-		<PackageReleaseNotes>Breaking alpha: simplify async API to RestRequest/url/method overloads, remove synchronous Execute&lt;T&gt; and sync-over-async HttpResponse construction, remove legacy response formatter path, and require content-aware async formatting.</PackageReleaseNotes>
+		<PackageReleaseNotes>Breaking alpha: simplify execution to async-only RestRequest/url/method overloads, remove synchronous Execute&lt;T&gt;, remove sync-over-async response construction, remove legacy response formatter path, require content-aware async formatting, copy response headers/content headers, support absolute URLs, chain request-hook return values, and harden RestRequest defaults.</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>
