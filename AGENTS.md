@@ -41,7 +41,12 @@ Preserve existing public APIs unless the task explicitly requests a breaking cha
 - Be careful with optional parameters because they affect source compatibility and named-argument callers.
 - When adding overloads, make them ergonomic for named-argument callers.
 
-For async APIs, follow the current release policy: 3.0 execution APIs are async-only and should not add synchronous Execute<T> wrappers unless a task explicitly requests reintroducing them.
+For async APIs, follow the current release policy:
+
+- 3.0 execution APIs are async-only.
+- Do not add synchronous `Execute<T>` wrappers unless a task explicitly requests reintroducing them.
+- Do not add sync-over-async helpers that call `.Result`, `.Wait()`, or `GetAwaiter().GetResult()` on tasks in library code.
+- Response content should be read asynchronously by `ExecuteAsync` and then passed as a string to `HttpResponse` and formatter hooks.
 
 ## HTTP request behavior
 
