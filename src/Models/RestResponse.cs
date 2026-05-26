@@ -49,9 +49,8 @@ namespace Clc.Rest.Models
         /// </summary>
         /// <param name="request"></param>
         public RestResponse(HttpRequestMessage request)
+            : this(request, null)
         {
-            Request = request;
-            BodyString = ReadBodySynchronously(request);
         }
 
         public RestResponse(HttpRequestMessage request, string bodyString)
@@ -69,11 +68,5 @@ namespace Clc.Rest.Models
             return Data?.ToString() ?? string.Empty;
         }
 
-        private static string ReadBodySynchronously(HttpRequestMessage request)
-        {
-            return request?.Content == null
-                ? null
-                : request.Content.ReadAsStringAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-        }
     }
 }

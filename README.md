@@ -14,7 +14,7 @@ The public async request API is now:
 
 Async calls that need body, parameters, headers, serializer, authenticator, or per-request formatting should construct a `RestRequest`.
 
-This release is async-only for execution. If a consumer needs synchronous behavior, they must explicitly opt into blocking (for example, `client.ExecuteAsync<T>(request).GetAwaiter().GetResult()` or `.Result`).
+This release is async-only for execution. The library no longer provides synchronous execution wrappers.
 
 Removed in this alpha:
 
