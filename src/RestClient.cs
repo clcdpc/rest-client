@@ -47,12 +47,6 @@ namespace Clc.Rest
             }
         }
 
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, CancellationToken cancellationToken = default) =>
-            await ExecuteAsync<T>(new RestRequest(method, url), cancellationToken).ConfigureAwait(false);
-
-        public async Task<IRestResponse<T>> ExecuteAsync<T>(string url, CancellationToken cancellationToken = default) =>
-            await ExecuteAsync<T>(new RestRequest(HttpMethod.Get, url), cancellationToken).ConfigureAwait(false);
-
         public virtual Task<T> FormatResponseAsync<T>(HttpResponseMessage response, string content, CancellationToken cancellationToken = default)
         {
             T output = default;

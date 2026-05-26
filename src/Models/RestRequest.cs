@@ -11,6 +11,24 @@ namespace Clc.Rest.Models
 {
     public class RestRequest : IRestRequest
     {
+        public static RestRequest Get(string path, Dictionary<string, string> parameters = null) =>
+            new RestRequest(HttpMethod.Get, path, null, parameters);
+
+        public static RestRequest Delete(string path, Dictionary<string, string> parameters = null) =>
+            new RestRequest(HttpMethod.Delete, path, null, parameters);
+
+        public static RestRequest Post(string path, object body = null, Dictionary<string, string> parameters = null) =>
+            new RestRequest(HttpMethod.Post, path, body, parameters);
+
+        public static RestRequest Put(string path, object body = null, Dictionary<string, string> parameters = null) =>
+            new RestRequest(HttpMethod.Put, path, body, parameters);
+
+        public static RestRequest Patch(string path, object body = null, Dictionary<string, string> parameters = null) =>
+            new RestRequest(new HttpMethod("PATCH"), path, body, parameters);
+
+        public static RestRequest Create(HttpMethod method, string path, object body = null, Dictionary<string, string> parameters = null) =>
+            new RestRequest(method, path, body, parameters);
+
         private Dictionary<string, string> _headers = new Dictionary<string, string>();
         private Dictionary<string, string> _parameters = new Dictionary<string, string>();
 

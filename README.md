@@ -9,8 +9,15 @@ This alpha intentionally simplifies the async API and removes legacy compatibili
 The public async request API is now:
 
 - `ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken = default)`
-- `ExecuteAsync<T>(string url, CancellationToken cancellationToken = default)`
-- `ExecuteAsync<T>(HttpMethod method, string url, CancellationToken cancellationToken = default)`
+
+Use `RestRequest` factory methods for common verbs:
+
+- `RestRequest.Get(...)`
+- `RestRequest.Post(...)`
+- `RestRequest.Put(...)`
+- `RestRequest.Patch(...)`
+- `RestRequest.Delete(...)`
+- `RestRequest.Create(...)`
 
 Async calls that need body, parameters, headers, serializer, authenticator, or per-request formatting should construct a `RestRequest`.
 
@@ -20,6 +27,7 @@ Removed in this alpha:
 
 - async verb helpers (`GetAsync`, `PostAsync`, `PutAsync`, `PatchAsync`, `DeleteAsync`)
 - async overloads that accept body/parameters directly outside `RestRequest`
+- URL-only and method/url `ExecuteAsync` convenience overloads (use `RestRequest` factories instead)
 - legacy `FormatResponse<T>(HttpResponseMessage)` override path
 - old `IRestRequest.FormatOutput(HttpResponseMessage)` delegate
 - synchronous `Execute<T>(RestRequest)` wrapper
@@ -48,16 +56,20 @@ await client.ExecuteAsync<MyDto>(
     cancellationToken: token);
 ```
 
-After (construct `RestRequest`):
+After (use `RestRequest` factory methods):
 
 ```csharp
 await client.ExecuteAsync<MyDto>(
-    new RestRequest(
-        HttpMethod.Post,
-        "/items",
-        body,
-        parameters),
+    RestRequest.Post("/items", body, parameters),
     token);
+```
+
+For richer calls, configure the request before execution:
+
+```csharp
+var request = RestRequest.Post("/items", body);
+request.Headers["X-Test"] = "value";
+await client.ExecuteAsync<MyDto>(request, token);
 ```
 
 Before (legacy formatter override path removed):
@@ -84,7 +96,7 @@ public override Task<T> FormatResponseAsync<T>(
 
 ## Async cancellation and error behavior
 
-`ExecuteAsync<T>` overloads accept an optional `CancellationToken cancellationToken = default`.
+`ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken = default)` accepts an optional cancellation token.
 
 - The token is passed to `HttpClient.SendAsync`.
 - For async request/response content reads, cancellation is honored cooperatively around content reads.
