@@ -147,6 +147,76 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public void BuildUrl_Returns_Absolute_Path_Unchanged_When_BaseUrl_Is_Set()
+    {
+        var client = CreateClient(new FakeHttpMessageHandler(_ => JsonResponse("{}")));
+        client.BaseUrl = "https://api.example.com";
+        var request = new RestRequest(HttpMethod.Get, "https://other.example.com/items");
+
+        var url = client.BuildUrl(request);
+
+        Assert.AreEqual("https://other.example.com/items", url);
+    }
+
+    [TestMethod]
+    public void BuildUrl_Returns_Absolute_Path_Unchanged_When_PathPrefix_Is_Set()
+    {
+        var client = CreateClient(new FakeHttpMessageHandler(_ => JsonResponse("{}")));
+        client.BaseUrl = "https://api.example.com";
+        client.PathPrefix = "v1";
+        var request = new RestRequest(HttpMethod.Get, "https://other.example.com/items?existing=true");
+
+        var url = client.BuildUrl(request);
+
+        Assert.AreEqual("https://other.example.com/items?existing=true", url);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_StringUrl_Sends_Absolute_Url_When_BaseUrl_Is_Set()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("ok"));
+        var client = CreateClient(handler);
+        client.BaseUrl = "https://api.example.com";
+
+        var response = await client.ExecuteAsync<string>("https://other.example.com/items", TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("https://other.example.com/items", handler.LastRequest!.RequestUri!.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_MethodUrl_Sends_Absolute_Url_When_BaseUrl_And_PathPrefix_Are_Set()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("ok"));
+        var client = CreateClient(handler);
+        client.BaseUrl = "https://api.example.com";
+        client.PathPrefix = "v1";
+
+        var response = await client.ExecuteAsync<string>(HttpMethod.Post, "https://other.example.com/items", TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("https://other.example.com/items", handler.LastRequest!.RequestUri!.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Absolute_Url_With_Parameters_Appends_Query_String()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("ok"));
+        var client = CreateClient(handler);
+        client.BaseUrl = "https://api.example.com";
+        client.PathPrefix = "v1";
+        var request = new RestRequest(HttpMethod.Get, "https://other.example.com/items?existing=true", parameters: new Dictionary<string, string>
+        {
+            ["q"] = "hello world"
+        });
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("https://other.example.com/items?existing=true&q=hello%20world", handler.LastRequest!.RequestUri!.AbsoluteUri);
+    }
+
+    [TestMethod]
     public async Task Response_Content_Available_In_RestResponse_Response_Content()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{\"message\":\"ok\"}"));
