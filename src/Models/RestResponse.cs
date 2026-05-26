@@ -1,8 +1,5 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Net.Http;
-using System.Text;
 
 namespace Clc.Rest.Models
 {
@@ -45,7 +42,8 @@ namespace Clc.Rest.Models
         }
 
         /// <summary>
-        /// Copy's request data into a new object to allow reading of request body data
+        /// Initializes a response with the request that was sent.
+        /// Request body content is not read by this constructor.
         /// </summary>
         /// <param name="request"></param>
         public RestResponse(HttpRequestMessage request)
