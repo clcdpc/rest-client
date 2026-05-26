@@ -16,6 +16,7 @@ Async calls that need body, parameters, headers, serializer, authenticator, or p
 
 Removed in this alpha:
 
+- synchronous `Execute<T>(RestRequest request)` wrapper
 - async verb helpers (`GetAsync`, `PostAsync`, `PutAsync`, `PatchAsync`, `DeleteAsync`)
 - async overloads that accept body/parameters directly outside `RestRequest`
 - legacy `FormatResponse<T>(HttpResponseMessage)` override path
@@ -31,6 +32,8 @@ Client-level custom formatting should override:
 
 Formatting code should use the supplied `content` string and should not read `response.Content`.
 `ExecuteAsync` reads response content once and passes the already-read string to formatting hooks.
+
+Execution is async-only in 3.0. If a consumer needs blocking behavior, they must opt into it explicitly at the call site (for example, `ExecuteAsync(...).GetAwaiter().GetResult()` or `ExecuteAsync(...).Result`).
 
 ### Migration examples
 
