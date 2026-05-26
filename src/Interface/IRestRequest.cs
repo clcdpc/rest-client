@@ -15,7 +15,7 @@ namespace Clc.Rest
         object Body { get; set; }
         Func<HttpResponseMessage, string, CancellationToken, Task<object>> FormatOutputAsync { get; set; }
         Dictionary<string, string> Headers { get; set; }
-        Dictionary<string, string> QueryParameters { get; set; }
+        Dictionary<string, object> QueryParameters { get; set; }
         HttpContent Content { get; set; }
         ISerializer Serializer { get; set; }
         IAuthenticator Authenticator { get; set; }

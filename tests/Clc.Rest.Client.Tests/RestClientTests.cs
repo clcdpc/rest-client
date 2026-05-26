@@ -125,7 +125,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>(RestRequest.Post("/post", new { Id = 42 }, new Dictionary<string, string> { ["a"] = "b" }), TestContext.CancellationToken);
+        await client.ExecuteAsync<string>(RestRequest.Post("/post", new { Id = 42 }, new Dictionary<string, object> { ["a"] = "b" }), TestContext.CancellationToken);
 
         var sentBody = await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken);
         Assert.Contains("\"Id\":42", sentBody);
@@ -139,7 +139,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/search", queryParameters: new Dictionary<string, string>
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/search", body: null, queryParameters: new Dictionary<string, object>
         {
             ["q"] = "value",
             ["n"] = "10"
@@ -161,7 +161,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>(new RestRequest(new HttpMethod(method), "/resource", queryParameters: new Dictionary<string, string>
+        await client.ExecuteAsync<string>(new RestRequest(new HttpMethod(method), "/resource", body: null, queryParameters: new Dictionary<string, object>
         {
             ["x y"] = "a&b",
             ["p"] = "q"
@@ -178,7 +178,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/search?existing=1", queryParameters: new Dictionary<string, string>
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/search?existing=1", body: null, queryParameters: new Dictionary<string, object>
         {
             ["new key"] = "new value"
         }), TestContext.CancellationToken);
@@ -195,7 +195,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Put, "/resource#frag", queryParameters: new Dictionary<string, string>
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Put, "/resource#frag", body: null, queryParameters: new Dictionary<string, object>
         {
             ["x"] = "1"
         }), TestContext.CancellationToken);
@@ -213,7 +213,7 @@ public class RestClientTests
         };
         var client = new TestRestClient(httpClient) { BaseUrl = string.Empty };
 
-        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Delete, "relative/path", queryParameters: new Dictionary<string, string>
+        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Delete, "relative/path", body: null, queryParameters: new Dictionary<string, object>
         {
             ["x"] = "1"
         }), TestContext.CancellationToken);
@@ -281,7 +281,7 @@ public class RestClientTests
         client.BaseUrl = "https://api.example.com";
         client.PathPrefix = "v1";
 
-        var response = await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "https://other.example.com/items?existing=true", queryParameters: new Dictionary<string, string>
+        var response = await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "https://other.example.com/items?existing=true", body: null, queryParameters: new Dictionary<string, object>
         {
             ["q"] = "hello world"
         }), TestContext.CancellationToken);

@@ -189,8 +189,8 @@ namespace Clc.Rest
             }
 
             var nonEmptyParameters = request.QueryParameters
-                .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Key) && !string.IsNullOrWhiteSpace(parameter.Value))
-                .Select(parameter => $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}")
+                .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Key) && parameter.Value != null && !string.IsNullOrWhiteSpace(Convert.ToString(parameter.Value)))
+                .Select(parameter => $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(Convert.ToString(parameter.Value))}")
                 .ToList();
 
             if (nonEmptyParameters.Any())
