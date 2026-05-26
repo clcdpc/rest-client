@@ -54,14 +54,16 @@ Do not change request construction semantics without updating tests and README.
 Current documented behavior:
 
 - If `Body` is supplied, serialize it and use it as request content.
-- For `POST`, if `Body` is `null`, send `Parameters` as `application/x-www-form-urlencoded`.
-- For `POST`, if `Body` is not `null`, preserve the serialized body and do not overwrite it with parameters.
-- For non-`POST` methods, append parameters to the URL query string.
+- QueryParameters are URL query values for any HTTP method.
+- `Body` is serialized when `Content` is null.
+- `Content` bypasses body serialization and is used directly.
+- `PostForm` should be used for `application/x-www-form-urlencoded` requests.
+- Do not reintroduce context-dependent `Parameters` behavior.
 - Query-string keys and values must be URL-encoded.
 - Existing query strings must be preserved.
 - Fragments must remain valid when query strings are appended.
 
-Add tests for any change involving `Body`, `Parameters`, URL building, query strings, headers, or authentication.
+Add tests for any change involving `Body`, `Content`, `QueryParameters`, URL building, query strings, headers, or authentication.
 
 ## Serialization and deserialization behavior
 
