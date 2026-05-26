@@ -136,12 +136,15 @@ namespace Clc.Rest
 
         public virtual string BuildUrl(RestRequest request)
         {
-            if (Uri.TryCreate(request.Path, UriKind.Absolute, out _))
+            var requestPath = request?.Path ?? string.Empty;
+
+            if (Uri.TryCreate(requestPath, UriKind.Absolute, out var absoluteUri)
+                && (absoluteUri.Scheme == Uri.UriSchemeHttp || absoluteUri.Scheme == Uri.UriSchemeHttps))
             {
-                return request.Path;
+                return requestPath;
             }
 
-            return $"{(BaseUrl?.Length > 0 ? BaseUrl.TrimEnd('/') + "/" : "")}{(!string.IsNullOrWhiteSpace(PathPrefix) ? PathPrefix.Trim('/') + "/" : "")}{request.Path.TrimStart('/')}";
+            return $"{(BaseUrl?.Length > 0 ? BaseUrl.TrimEnd('/') + "/" : "")}{(!string.IsNullOrWhiteSpace(PathPrefix) ? PathPrefix.Trim('/') + "/" : "")}{requestPath.TrimStart('/')}";
         }
 
         protected virtual HttpRequestMessage AddBody(RestRequest request, HttpRequestMessage httpRequest)
