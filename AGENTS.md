@@ -54,10 +54,13 @@ Do not change request construction semantics without updating tests and README.
 Current documented behavior:
 
 - If `Body` is supplied, serialize it and use it as request content.
-- `QueryParameters` are always appended to the URL query string for any HTTP method.
+- `QueryParameters` (`Dictionary<string, object>`) are always appended to the URL query string for any HTTP method.
 - If `Content` is supplied, use it directly and bypass body serialization.
 - If `Content` is null and `Body` is supplied, serialize `Body` and use it as request content.
 - Use `RestRequest.PostForm` for `application/x-www-form-urlencoded` requests.
+- Query values are converted using `Convert.ToString(value, CultureInfo.InvariantCulture)` before encoding.
+- Null query values are skipped.
+- Empty/whitespace converted query values are skipped.
 - Query-string keys and values must be URL-encoded.
 - Existing query strings must be preserved.
 - Fragments must remain valid when query strings are appended.

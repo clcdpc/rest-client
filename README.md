@@ -28,9 +28,17 @@ Behavior:
 - For headers, serializer, authenticator, or request-specific formatting, configure the returned `RestRequest` before calling `ExecuteAsync`.
 
 ```csharp
-var request = RestRequest.Post("/items", body, queryParameters);
-request.Headers["X-Test"] = "value";
-await client.ExecuteAsync<MyDto>(request, token);
+var request = RestRequest.Get("/items", new Dictionary<string, object>
+{
+    ["page"] = 2,
+    ["limit"] = 50,
+    ["includeDeleted"] = false
+});
+await client.ExecuteAsync<ItemSearchResult>(request, token);
+
+var createRequest = RestRequest.Post("/items", body, queryParameters);
+createRequest.Headers["X-Test"] = "value";
+await client.ExecuteAsync<MyDto>(createRequest, token);
 
 var formRequest = RestRequest.PostForm("/token", formValues);
 await client.ExecuteAsync<TokenDto>(formRequest, token);

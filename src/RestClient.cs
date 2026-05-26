@@ -4,6 +4,7 @@ using Clc.Rest.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -189,8 +190,14 @@ namespace Clc.Rest
             }
 
             var nonEmptyParameters = request.QueryParameters
-                .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Key) && parameter.Value != null && !string.IsNullOrWhiteSpace(Convert.ToString(parameter.Value)))
-                .Select(parameter => $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(Convert.ToString(parameter.Value))}")
+                .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Key) && parameter.Value != null)
+                .Select(parameter => new
+                {
+                    parameter.Key,
+                    Value = ConvertQueryParameterValue(parameter.Value)
+                })
+                .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Value))
+                .Select(parameter => $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}")
                 .ToList();
 
             if (nonEmptyParameters.Any())
@@ -199,6 +206,11 @@ namespace Clc.Rest
             }
 
             return httpRequest;
+        }
+
+        private static string ConvertQueryParameterValue(object value)
+        {
+            return Convert.ToString(value, CultureInfo.InvariantCulture);
         }
 
         private Uri AppendQueryString(Uri requestUri, string queryToAppend)

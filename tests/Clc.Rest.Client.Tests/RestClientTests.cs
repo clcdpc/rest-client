@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using Clc.Rest.Models;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -687,6 +688,91 @@ public class RestClientTests
     }
 
 
+
+    [TestMethod]
+    public async Task ExecuteAsync_QueryParameters_Convert_Object_Values_Using_Invariant_Culture()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        var originalCulture = CultureInfo.CurrentCulture;
+        var originalUICulture = CultureInfo.CurrentUICulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
+            CultureInfo.CurrentUICulture = new CultureInfo("fr-FR");
+
+            var request = RestRequest.Get("/items", new Dictionary<string, object>
+            {
+                ["page"] = 2,
+                ["includeDeleted"] = false,
+                ["price"] = 12.34m
+            });
+
+            var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+            Assert.IsNull(response.Exception);
+            var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
+            Assert.Contains("page=2", uri);
+            Assert.Contains("includeDeleted=False", uri);
+            Assert.Contains("price=12.34", uri);
+            Assert.DoesNotContain("price=12%2C34", uri);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUICulture;
+        }
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_QueryParameters_Skip_Null_And_Empty_Object_Values()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var request = RestRequest.Get("/items", new Dictionary<string, object>
+        {
+            ["keep"] = "value",
+            ["nullValue"] = null!,
+            ["empty"] = string.Empty,
+            ["whitespace"] = "   ",
+            ["sp ace"] = "a&b"
+        });
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        var uri = handler.LastRequest!.RequestUri!.AbsoluteUri;
+        Assert.Contains("keep=value", uri);
+        Assert.Contains("sp%20ace=a%26b", uri);
+        Assert.DoesNotContain("nullValue=", uri);
+        Assert.DoesNotContain("empty=", uri);
+        Assert.DoesNotContain("whitespace=", uri);
+    }
+
+    [TestMethod]
+    public void RestRequest_Factories_Accept_Object_QueryParameter_Values()
+    {
+        var queryParameters = new Dictionary<string, object> { ["page"] = 2, ["includeDeleted"] = false };
+
+        var requests = new[]
+        {
+            RestRequest.Get("/items", queryParameters),
+            RestRequest.Delete("/items", queryParameters),
+            RestRequest.Post("/items", new { Name = "x" }, queryParameters),
+            RestRequest.Put("/items", new { Name = "x" }, queryParameters),
+            RestRequest.Patch("/items", new { Name = "x" }, queryParameters),
+            RestRequest.Create(HttpMethod.Trace, "/items", null, queryParameters),
+            RestRequest.WithContent(HttpMethod.Post, "/items", new StringContent("x"), queryParameters)
+        };
+
+        foreach (var request in requests)
+        {
+            Assert.AreSame(queryParameters, request.QueryParameters);
+        }
+    }
+
     [TestMethod]
     public void Public_Async_Api_Shape_Is_Simplified()
     {
@@ -712,6 +798,19 @@ public class RestClientTests
             && m.GetParameters()[2].ParameterType == typeof(CancellationToken)));
 
         var names = methods.Select(m => m.Name).ToList();
+        Assert.AreEqual(typeof(Dictionary<string, object>), typeof(RestRequest).GetProperty("QueryParameters")!.PropertyType);
+        Assert.IsNull(typeof(RestRequest).GetProperty("Parameters"));
+        Assert.IsNull(typeof(RestRequest).GetProperty("FormParameters"));
+
+        var postForm = typeof(RestRequest).GetMethod("PostForm", new[] { typeof(string), typeof(Dictionary<string, string>), typeof(Dictionary<string, object>) });
+        Assert.IsNotNull(postForm);
+
+        foreach (var methodName in new[] { "Get", "Post", "Put", "Patch", "Delete", "Create", "WithContent" })
+        {
+            var overloads = typeof(RestRequest).GetMethods().Where(m => m.Name == methodName).ToList();
+            Assert.IsTrue(overloads.Any(m => m.GetParameters().Any(p => p.Name == "queryParameters" && p.ParameterType == typeof(Dictionary<string, object>))));
+        }
+
         Assert.DoesNotContain("GetAsync", names);
         Assert.DoesNotContain("PostAsync", names);
         Assert.DoesNotContain("PutAsync", names);
@@ -748,6 +847,19 @@ public class RestClientTests
             && m.GetParameters()[2].ParameterType == typeof(CancellationToken)));
 
         var names = methods.Select(m => m.Name).ToList();
+        Assert.AreEqual(typeof(Dictionary<string, object>), typeof(RestRequest).GetProperty("QueryParameters")!.PropertyType);
+        Assert.IsNull(typeof(RestRequest).GetProperty("Parameters"));
+        Assert.IsNull(typeof(RestRequest).GetProperty("FormParameters"));
+
+        var postForm = typeof(RestRequest).GetMethod("PostForm", new[] { typeof(string), typeof(Dictionary<string, string>), typeof(Dictionary<string, object>) });
+        Assert.IsNotNull(postForm);
+
+        foreach (var methodName in new[] { "Get", "Post", "Put", "Patch", "Delete", "Create", "WithContent" })
+        {
+            var overloads = typeof(RestRequest).GetMethods().Where(m => m.Name == methodName).ToList();
+            Assert.IsTrue(overloads.Any(m => m.GetParameters().Any(p => p.Name == "queryParameters" && p.ParameterType == typeof(Dictionary<string, object>))));
+        }
+
         Assert.DoesNotContain("GetAsync", names);
         Assert.DoesNotContain("PostAsync", names);
         Assert.DoesNotContain("PutAsync", names);
