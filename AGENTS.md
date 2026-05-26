@@ -41,7 +41,7 @@ Preserve existing public APIs unless the task explicitly requests a breaking cha
 - Be careful with optional parameters because they affect source compatibility and named-argument callers.
 - When adding overloads, make them ergonomic for named-argument callers.
 
-For async APIs, preserve existing synchronous wrappers unless the task explicitly changes sync behavior.
+For async APIs, follow the current release policy: 3.0 execution APIs are async-only and should not add synchronous Execute<T> wrappers unless a task explicitly requests reintroducing them.
 
 ## HTTP request behavior
 
