@@ -723,6 +723,41 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public void HttpResponse_Does_Not_Expose_Sync_Content_Read_Constructor()
+    {
+        var constructors = typeof(HttpResponse).GetConstructors(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+        Assert.IsNull(constructors.SingleOrDefault(c =>
+            c.GetParameters().Length == 1
+            && c.GetParameters()[0].ParameterType == typeof(HttpResponseMessage)));
+        Assert.IsNotNull(constructors.SingleOrDefault(c =>
+            c.GetParameters().Length == 2
+            && c.GetParameters()[0].ParameterType == typeof(HttpResponseMessage)
+            && c.GetParameters()[1].ParameterType == typeof(string)));
+        Assert.IsNotNull(constructors.SingleOrDefault(c => c.GetParameters().Length == 0));
+    }
+
+    [TestMethod]
+    public void Public_Api_Does_Not_Expose_Sync_Execution_Or_Sync_Content_Reads()
+    {
+        var restClientMethods = typeof(Clc.Rest.RestClient).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        var restClientMethodNames = restClientMethods.Select(m => m.Name).ToList();
+        Assert.DoesNotContain("Execute", restClientMethodNames);
+
+        var iRestClientMethods = typeof(IRestClient).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        var iRestClientMethodNames = iRestClientMethods.Select(m => m.Name).ToList();
+        Assert.DoesNotContain("Execute", iRestClientMethodNames);
+
+        var httpResponseConstructors = typeof(HttpResponse).GetConstructors(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        Assert.IsNull(httpResponseConstructors.SingleOrDefault(c =>
+            c.GetParameters().Length == 1
+            && c.GetParameters()[0].ParameterType == typeof(HttpResponseMessage)));
+
+        var publicHttpResponseMethods = typeof(HttpResponse).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static);
+        Assert.IsNull(publicHttpResponseMethods.SingleOrDefault(m => m.Name == "ReadContentSynchronously"));
+    }
+
+    [TestMethod]
     public async Task IRestClient_ExecuteAsync_Can_Call_Concrete_RestClient()
     {
         var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
