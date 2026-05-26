@@ -208,6 +208,66 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public async Task ExecuteAsync_Sends_Request_Returned_By_Authenticator()
+    {
+        var replacementRequest = new HttpRequestMessage(HttpMethod.Get, "https://example.test/replaced");
+        replacementRequest.Headers.Add("X-Replaced-By", "authenticator");
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        var request = new RestRequest(HttpMethod.Get, "/original")
+        {
+            Authenticator = new ReplacingAuthenticator(replacementRequest)
+        };
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreSame(replacementRequest, handler.LastRequest);
+        Assert.AreSame(replacementRequest, response.Request);
+        Assert.AreEqual("https://example.test/replaced", handler.LastRequest!.RequestUri!.AbsoluteUri);
+        Assert.IsTrue(handler.LastRequest.Headers.TryGetValues("X-Replaced-By", out var values));
+        CollectionAssert.Contains(values.ToList(), "authenticator");
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Uses_Final_Request_Returned_By_Request_Building_Hooks()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = new HookReplacingRestClient(new HttpClient(handler))
+        {
+            BaseUrl = "https://example.test"
+        };
+
+        var response = await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/original"), TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.IsNotNull(client.ReplacementRequest);
+        Assert.AreSame(client.ReplacementRequest, handler.LastRequest);
+        Assert.AreSame(client.ReplacementRequest, response.Request);
+        Assert.AreEqual("https://example.test/hook-replaced", handler.LastRequest!.RequestUri!.AbsoluteUri);
+        Assert.IsTrue(handler.LastRequest.Headers.TryGetValues("X-Replaced-By", out var values));
+        CollectionAssert.Contains(values.ToList(), "hook");
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_BodyString_Comes_From_Final_Request()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = new BodyReplacingRestClient(new HttpClient(handler))
+        {
+            BaseUrl = "https://example.test"
+        };
+        var request = new RestRequest(HttpMethod.Post, "/original", body: new { Name = "Original" });
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.IsNotNull(client.ReplacementRequest);
+        Assert.AreSame(client.ReplacementRequest, response.Request);
+        Assert.AreEqual("replacement-body", response.BodyString);
+    }
+
+    [TestMethod]
     public async Task ExecuteAsync_Response_Content_Is_Read_Only_Once()
     {
         var content = new ThrowOnSecondReadContent("{\"Name\":\"Once\"}");
@@ -571,6 +631,13 @@ public class RestClientTests
         public HttpRequestMessage Authenticate(HttpClient client, HttpRequestMessage request) => throw _exception;
     }
 
+    private sealed class ReplacingAuthenticator(HttpRequestMessage replacementRequest) : Clc.Rest.Auth.IAuthenticator
+    {
+        private readonly HttpRequestMessage _replacementRequest = replacementRequest;
+
+        public HttpRequestMessage Authenticate(HttpClient client, HttpRequestMessage request) => _replacementRequest;
+    }
+
     private sealed class TrackingSerializer : Clc.Rest.ISerializer
     {
         public bool WasCalled { get; private set; }
@@ -653,6 +720,40 @@ public class RestClientTests
         {
             length = _payloadBytes.Length;
             return true;
+        }
+    }
+
+    private sealed class HookReplacingRestClient(HttpClient client) : Clc.Rest.RestClient(client)
+    {
+        public HttpRequestMessage? ReplacementRequest { get; private set; }
+
+        protected override HttpRequestMessage AddHeaders(RestRequest request, HttpRequestMessage httpRequest)
+        {
+            var replacementRequest = new HttpRequestMessage(httpRequest.Method, "https://example.test/hook-replaced");
+            replacementRequest.Headers.Add("X-Replaced-By", "hook");
+            replacementRequest.Headers.Accept.Clear();
+            foreach (var accept in httpRequest.Headers.Accept)
+            {
+                replacementRequest.Headers.Accept.Add(accept);
+            }
+
+            ReplacementRequest = replacementRequest;
+            return replacementRequest;
+        }
+    }
+
+    private sealed class BodyReplacingRestClient(HttpClient client) : Clc.Rest.RestClient(client)
+    {
+        public HttpRequestMessage? ReplacementRequest { get; private set; }
+
+        protected override HttpRequestMessage AddParameters(RestRequest request, HttpRequestMessage httpRequest)
+        {
+            var replacementRequest = new HttpRequestMessage(httpRequest.Method, "https://example.test/body-replaced")
+            {
+                Content = new StringContent("replacement-body", Encoding.UTF8, "text/plain")
+            };
+            ReplacementRequest = replacementRequest;
+            return replacementRequest;
         }
     }
 }

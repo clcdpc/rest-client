@@ -90,13 +90,14 @@ namespace Clc.Rest
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var httpRequest = new HttpRequestMessage(request.Method, BuildUrl(request));
-                response.Request = httpRequest;
                 httpRequest.Headers.Accept.Add(Accept);
 
-                AddHeaders(request, httpRequest);
-                AddAuthenticator(request, httpRequest);
-                AddBody(request, httpRequest);
-                AddParameters(request, httpRequest);
+                httpRequest = AddHeaders(request, httpRequest);
+                httpRequest = AddAuthenticator(request, httpRequest);
+                httpRequest = AddBody(request, httpRequest);
+                httpRequest = AddParameters(request, httpRequest);
+
+                response.Request = httpRequest;
 
                 response.BodyString = httpRequest.Content == null
                     ? null
