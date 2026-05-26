@@ -14,6 +14,40 @@ public class RestClientTests
     public required TestContext TestContext { get; set; }
 
     [TestMethod]
+    public void HttpResponse_Does_Not_Expose_Sync_Content_Read_Constructor()
+    {
+        var constructors = typeof(HttpResponse).GetConstructors();
+
+        Assert.IsTrue(constructors.Any(c => c.GetParameters().Length == 0));
+        Assert.IsTrue(constructors.Any(c =>
+        {
+            var parameters = c.GetParameters();
+            return parameters.Length == 2
+                && parameters[0].ParameterType == typeof(HttpResponseMessage)
+                && parameters[1].ParameterType == typeof(string);
+        }));
+        Assert.IsFalse(constructors.Any(c =>
+        {
+            var parameters = c.GetParameters();
+            return parameters.Length == 1 && parameters[0].ParameterType == typeof(HttpResponseMessage);
+        }));
+    }
+
+    [TestMethod]
+    public void Public_Api_Does_Not_Expose_Sync_Execution_Or_Sync_Content_Reads()
+    {
+        Assert.IsFalse(typeof(Clc.Rest.RestClient).GetMethods().Any(m => m.Name == "Execute" && m.IsPublic));
+        Assert.IsFalse(typeof(Clc.Rest.IRestClient).GetMethods().Any(m => m.Name == "Execute"));
+        Assert.IsFalse(typeof(HttpResponse).GetConstructors().Any(c =>
+        {
+            var parameters = c.GetParameters();
+            return parameters.Length == 1 && parameters[0].ParameterType == typeof(HttpResponseMessage);
+        }));
+        Assert.IsFalse(typeof(HttpResponse).GetMethods().Any(m => m.Name == "ReadContentSynchronously" && m.IsPublic));
+    }
+
+
+    [TestMethod]
     public void RestRequest_DefaultConstructor_Has_Safe_Defaults()
     {
         var request = new RestRequest();
