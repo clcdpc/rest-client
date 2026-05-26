@@ -14,6 +14,81 @@ public class RestClientTests
     public required TestContext TestContext { get; set; }
 
     [TestMethod]
+    public void RestRequest_DefaultConstructor_Has_Safe_Defaults()
+    {
+        var request = new RestRequest();
+
+        Assert.AreEqual(HttpMethod.Get, request.Method);
+        Assert.AreEqual(string.Empty, request.Path);
+        Assert.IsNotNull(request.Headers);
+        Assert.IsNotNull(request.Parameters);
+        Assert.AreEqual(0, request.Headers.Count);
+        Assert.AreEqual(0, request.Parameters.Count);
+    }
+
+    [TestMethod]
+    public void RestRequest_Constructor_Normalizes_Null_Path_To_Empty_String()
+    {
+        var request = new RestRequest(HttpMethod.Get, null);
+
+        Assert.AreEqual(string.Empty, request.Path);
+    }
+
+    [TestMethod]
+    public void RestRequest_Constructor_Normalizes_Null_Method_To_Get()
+    {
+        var request = new RestRequest(null, "/items");
+
+        Assert.AreEqual(HttpMethod.Get, request.Method);
+    }
+
+    [TestMethod]
+    public void RestRequest_Headers_Setter_Normalizes_Null_To_Empty_Dictionary()
+    {
+        var request = new RestRequest();
+
+        request.Headers = null;
+
+        Assert.IsNotNull(request.Headers);
+        Assert.AreEqual(0, request.Headers.Count);
+    }
+
+    [TestMethod]
+    public void RestRequest_Parameters_Setter_Normalizes_Null_To_Empty_Dictionary()
+    {
+        var request = new RestRequest();
+
+        request.Parameters = null;
+
+        Assert.IsNotNull(request.Parameters);
+        Assert.AreEqual(0, request.Parameters.Count);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Default_RestRequest_Does_Not_Throw_NullReferenceException()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>(new RestRequest(), TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("https://example.test/", handler.LastRequest!.RequestUri!.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Null_Path_Is_Captured_As_Predictable_Response_Exception_Or_Normalized()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, null), TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("https://example.test/", handler.LastRequest!.RequestUri!.AbsoluteUri);
+    }
+
+    [TestMethod]
     public async Task Post_With_Body_Preserves_Serialized_Body()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
