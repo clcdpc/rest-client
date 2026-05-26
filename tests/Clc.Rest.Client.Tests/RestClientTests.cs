@@ -21,9 +21,9 @@ public class RestClientTests
         Assert.AreEqual(HttpMethod.Get, request.Method);
         Assert.AreEqual(string.Empty, request.Path);
         Assert.IsNotNull(request.Headers);
-        Assert.IsNotNull(request.Parameters);
+        Assert.IsNotNull(request.QueryParameters);
         Assert.AreEqual(0, request.Headers.Count);
-        Assert.AreEqual(0, request.Parameters.Count);
+        Assert.AreEqual(0, request.QueryParameters.Count);
     }
 
     [TestMethod]
@@ -54,14 +54,14 @@ public class RestClientTests
     }
 
     [TestMethod]
-    public void RestRequest_Parameters_Setter_Normalizes_Null_To_Empty_Dictionary()
+    public void RestRequest_QueryParameters_Setter_Normalizes_Null_To_Empty_Dictionary()
     {
         var request = new RestRequest();
 
-        request.Parameters = null;
+        request.QueryParameters = null;
 
-        Assert.IsNotNull(request.Parameters);
-        Assert.AreEqual(0, request.Parameters.Count);
+        Assert.IsNotNull(request.QueryParameters);
+        Assert.AreEqual(0, request.QueryParameters.Count);
     }
 
     [TestMethod]
@@ -102,12 +102,12 @@ public class RestClientTests
     }
 
     [TestMethod]
-    public async Task Post_With_Parameters_And_No_Body_Uses_FormUrlEncodedContent()
+    public async Task ExecuteAsync_Uses_PostForm_Factory_As_FormUrlEncodedContent()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Post, "/post", parameters: new Dictionary<string, string>
+        await client.ExecuteAsync<string>(RestRequest.PostForm("/post", new Dictionary<string, string>
         {
             ["first"] = "one",
             ["second"] = "two"
@@ -120,7 +120,7 @@ public class RestClientTests
     }
 
     [TestMethod]
-    public async Task Post_With_Body_And_Parameters_Does_Not_Overwrite_Body()
+    public async Task ExecuteAsync_Uses_Post_Factory_Request_With_Body_And_QueryParameters()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
@@ -134,12 +134,12 @@ public class RestClientTests
     }
 
     [TestMethod]
-    public async Task Get_With_Parameters_Appends_Query_String()
+    public async Task ExecuteAsync_Uses_Get_Factory_Request_With_QueryParameters()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/search", parameters: new Dictionary<string, string>
+        await client.ExecuteAsync<string>(RestRequest.Get("/search", new Dictionary<string, string>
         {
             ["q"] = "value",
             ["n"] = "10"
@@ -156,12 +156,12 @@ public class RestClientTests
     [DataRow("PUT")]
     [DataRow("PATCH")]
     [DataRow("DELETE")]
-    public async Task NonPost_Methods_With_Parameters_Append_Query_String(string method)
+    public async Task ExecuteAsync_Uses_NonPost_Factory_Request_With_QueryParameters_Append_Query_String(string method)
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>(new RestRequest(new HttpMethod(method), "/resource", parameters: new Dictionary<string, string>
+        await client.ExecuteAsync<string>(RestRequest.Create(new HttpMethod(method), "/resource", queryParameters: new Dictionary<string, string>
         {
             ["x y"] = "a&b",
             ["p"] = "q"
@@ -178,7 +178,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "/search?existing=1", parameters: new Dictionary<string, string>
+        await client.ExecuteAsync<string>(RestRequest.Get("/search?existing=1", new Dictionary<string, string>
         {
             ["new key"] = "new value"
         }), TestContext.CancellationToken);
@@ -195,7 +195,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Put, "/resource#frag", parameters: new Dictionary<string, string>
+        await client.ExecuteAsync<string>(RestRequest.Put("/resource#frag", queryParameters: new Dictionary<string, string>
         {
             ["x"] = "1"
         }), TestContext.CancellationToken);
@@ -213,7 +213,7 @@ public class RestClientTests
         };
         var client = new TestRestClient(httpClient) { BaseUrl = string.Empty };
 
-        await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Delete, "relative/path", parameters: new Dictionary<string, string>
+        await client.ExecuteAsync<string>(RestRequest.Delete("relative/path", new Dictionary<string, string>
         {
             ["x"] = "1"
         }), TestContext.CancellationToken);
@@ -247,41 +247,14 @@ public class RestClientTests
     }
 
     [TestMethod]
-    public async Task ExecuteAsync_StringUrl_Sends_Absolute_Url_When_BaseUrl_Is_Set()
-    {
-        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
-        var client = CreateClient(handler);
-        client.BaseUrl = "https://api.example.com";
-
-        var response = await client.ExecuteAsync<string>("https://other.example.com/items", TestContext.CancellationToken);
-
-        Assert.IsNull(response.Exception);
-        Assert.AreEqual("https://other.example.com/items", handler.LastRequest!.RequestUri!.AbsoluteUri);
-    }
-
-    [TestMethod]
-    public async Task ExecuteAsync_MethodUrl_Sends_Absolute_Url_When_BaseUrl_And_PathPrefix_Are_Set()
+    public async Task ExecuteAsync_Absolute_Url_With_QueryParameters_Appends_Query_String()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
         client.BaseUrl = "https://api.example.com";
         client.PathPrefix = "v1";
 
-        var response = await client.ExecuteAsync<string>(HttpMethod.Post, "https://other.example.com/items", TestContext.CancellationToken);
-
-        Assert.IsNull(response.Exception);
-        Assert.AreEqual("https://other.example.com/items", handler.LastRequest!.RequestUri!.AbsoluteUri);
-    }
-
-    [TestMethod]
-    public async Task ExecuteAsync_Absolute_Url_With_Parameters_Appends_Query_String()
-    {
-        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
-        var client = CreateClient(handler);
-        client.BaseUrl = "https://api.example.com";
-        client.PathPrefix = "v1";
-
-        var response = await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, "https://other.example.com/items?existing=true", parameters: new Dictionary<string, string>
+        var response = await client.ExecuteAsync<string>(RestRequest.Get("https://other.example.com/items?existing=true", new Dictionary<string, string>
         {
             ["q"] = "hello world"
         }), TestContext.CancellationToken);
@@ -296,7 +269,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{\"message\":\"ok\"}"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<Dictionary<string, string>>("/data", TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<Dictionary<string, string>>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.AreEqual("{\"message\":\"ok\"}", response.Response.Content);
     }
@@ -307,7 +280,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("plain-text"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>("/data", TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.AreEqual("plain-text", response.Data);
         Assert.AreEqual("plain-text", response.Response.Content);
@@ -322,7 +295,7 @@ public class RestClientTests
         });
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<bool>("/data", TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<bool>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.IsTrue(response.Data);
     }
@@ -334,7 +307,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse(payload));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<Payload>("/data", TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<Payload>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.AreEqual(payload, response.Response.Content);
         Assert.AreEqual("FromBody", response.Data.Name);
@@ -358,7 +331,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<Payload>("/data", TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<Payload>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.AreEqual(1, content.ReadCount);
         Assert.AreEqual("Once", response.Data.Name);
@@ -372,7 +345,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        await client.ExecuteAsync<string>("/data", cancellationToken: tokenSource.Token);
+        await client.ExecuteAsync<string>(RestRequest.Get("/data"), cancellationToken: tokenSource.Token);
 
         Assert.IsTrue(handler.LastCancellationToken.CanBeCanceled);
         Assert.AreNotEqual(CancellationToken.None, handler.LastCancellationToken);
@@ -502,7 +475,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>("/data", cancellationToken: tokenSource.Token);
+        var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), cancellationToken: tokenSource.Token);
 
         Assert.IsInstanceOfType<OperationCanceledException>(response.Exception);
         Assert.IsNull(handler.LastRequest);
@@ -573,7 +546,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => throw new HttpRequestException("network"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>("/data", TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.IsInstanceOfType<HttpRequestException>(response.Exception);
     }
@@ -584,7 +557,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{not-json"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<Payload>("/data", TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<Payload>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.IsNotNull(response.Exception);
     }
@@ -602,7 +575,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => responseMessage);
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<Payload>("/data", TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<Payload>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.IsTrue(responseMessage.IsDisposed);
         Assert.IsTrue(content.IsDisposed);
@@ -622,7 +595,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => responseMessage);
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>("/data", TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.IsNull(response.Exception);
         Assert.IsTrue(responseMessage.IsDisposed);
@@ -656,23 +629,12 @@ public class RestClientTests
         var methods = typeof(Clc.Rest.RestClient).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
         var executeAsync = methods.Where(m => m.Name == "ExecuteAsync").ToList();
 
-        Assert.HasCount(3, executeAsync);
+        Assert.HasCount(1, executeAsync);
         Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
             m.IsGenericMethodDefinition
             && m.GetParameters().Length == 2
             && m.GetParameters()[0].ParameterType == typeof(RestRequest)
             && m.GetParameters()[1].ParameterType == typeof(CancellationToken)));
-        Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
-            m.IsGenericMethodDefinition
-            && m.GetParameters().Length == 2
-            && m.GetParameters()[0].ParameterType == typeof(string)
-            && m.GetParameters()[1].ParameterType == typeof(CancellationToken)));
-        Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
-            m.IsGenericMethodDefinition
-            && m.GetParameters().Length == 3
-            && m.GetParameters()[0].ParameterType == typeof(HttpMethod)
-            && m.GetParameters()[1].ParameterType == typeof(string)
-            && m.GetParameters()[2].ParameterType == typeof(CancellationToken)));
 
         var names = methods.Select(m => m.Name).ToList();
         Assert.DoesNotContain("GetAsync", names);
@@ -692,23 +654,12 @@ public class RestClientTests
         var methods = typeof(IRestClient).GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
         var executeAsync = methods.Where(m => m.Name == "ExecuteAsync").ToList();
 
-        Assert.HasCount(3, executeAsync);
+        Assert.HasCount(1, executeAsync);
         Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
             m.IsGenericMethodDefinition
             && m.GetParameters().Length == 2
             && m.GetParameters()[0].ParameterType == typeof(RestRequest)
             && m.GetParameters()[1].ParameterType == typeof(CancellationToken)));
-        Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
-            m.IsGenericMethodDefinition
-            && m.GetParameters().Length == 2
-            && m.GetParameters()[0].ParameterType == typeof(string)
-            && m.GetParameters()[1].ParameterType == typeof(CancellationToken)));
-        Assert.IsNotNull(executeAsync.SingleOrDefault(m =>
-            m.IsGenericMethodDefinition
-            && m.GetParameters().Length == 3
-            && m.GetParameters()[0].ParameterType == typeof(HttpMethod)
-            && m.GetParameters()[1].ParameterType == typeof(string)
-            && m.GetParameters()[2].ParameterType == typeof(CancellationToken)));
 
         var names = methods.Select(m => m.Name).ToList();
         Assert.DoesNotContain("GetAsync", names);
@@ -766,7 +717,7 @@ public class RestClientTests
         });
         IRestClient client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>("/data", TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.IsNull(response.Exception);
         Assert.AreEqual("expected-value", response.Data);

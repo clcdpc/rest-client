@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,9 +12,10 @@ namespace Clc.Rest
         HttpMethod Method { get; set; }
         string Path { get; set; }
         object Body { get; set; }
+        HttpContent Content { get; set; }
         Func<HttpResponseMessage, string, CancellationToken, Task<object>> FormatOutputAsync { get; set; }
         Dictionary<string, string> Headers { get; set; }
-        Dictionary<string, string> Parameters { get; set; }
+        Dictionary<string, string> QueryParameters { get; set; }
         ISerializer Serializer { get; set; }
         IAuthenticator Authenticator { get; set; }
     }
