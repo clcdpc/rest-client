@@ -129,7 +129,6 @@ namespace Clc.Rest
             return response;
         }
 
-        public IRestResponse<T> Execute<T>(RestRequest request) => ExecuteAsync<T>(request).Result;
 
         public virtual RestRequest PreformatRestRequest(RestRequest request) => request;
         public virtual string PreDeserialize(string responseBody) => responseBody;

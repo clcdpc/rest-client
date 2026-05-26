@@ -466,6 +466,7 @@ public class RestClientTests
             && m.GetParameters()[2].ParameterType == typeof(CancellationToken)));
 
         var names = methods.Select(m => m.Name).ToList();
+        Assert.DoesNotContain("Execute", names);
         Assert.DoesNotContain("GetAsync", names);
         Assert.DoesNotContain("PostAsync", names);
         Assert.DoesNotContain("PutAsync", names);
@@ -500,14 +501,8 @@ public class RestClientTests
             && m.GetParameters()[1].ParameterType == typeof(string)
             && m.GetParameters()[2].ParameterType == typeof(CancellationToken)));
 
-        var execute = methods.Where(m => m.Name == "Execute").ToList();
-        Assert.HasCount(1, execute);
-        Assert.IsNotNull(execute.SingleOrDefault(m =>
-            m.IsGenericMethodDefinition
-            && m.GetParameters().Length == 1
-            && m.GetParameters()[0].ParameterType == typeof(RestRequest)));
-
         var names = methods.Select(m => m.Name).ToList();
+        Assert.DoesNotContain("Execute", names);
         Assert.DoesNotContain("GetAsync", names);
         Assert.DoesNotContain("PostAsync", names);
         Assert.DoesNotContain("PutAsync", names);
