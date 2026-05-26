@@ -12,7 +12,5 @@ namespace Clc.Rest
         Task<IRestResponse<T>> ExecuteAsync<T>(string url, CancellationToken cancellationToken = default);
 
         Task<IRestResponse<T>> ExecuteAsync<T>(HttpMethod method, string url, CancellationToken cancellationToken = default);
-
-        IRestResponse<T> Execute<T>(RestRequest request);
     }
 }

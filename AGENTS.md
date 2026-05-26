@@ -43,6 +43,8 @@ Preserve existing public APIs unless the task explicitly requests a breaking cha
 
 For async APIs, preserve existing synchronous wrappers unless the task explicitly changes sync behavior.
 
+Note: in 3.0, execution is intentionally async-only and synchronous Execute<T> wrappers are removed as a breaking change.
+
 ## HTTP request behavior
 
 Do not change request construction semantics without updating tests and README.
