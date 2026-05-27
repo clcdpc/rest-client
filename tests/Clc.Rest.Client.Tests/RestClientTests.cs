@@ -23,8 +23,8 @@ public class RestClientTests
         Assert.AreEqual(string.Empty, request.Path);
         Assert.IsNotNull(request.Headers);
         Assert.IsNotNull(request.QueryParameters);
-        Assert.AreEqual(0, request.Headers.Count);
-        Assert.AreEqual(0, request.QueryParameters.Count);
+        Assert.IsEmpty(request.Headers);
+        Assert.IsEmpty(request.QueryParameters);
     }
 
     [TestMethod]
@@ -51,7 +51,7 @@ public class RestClientTests
         request.Headers = null!;
 
         Assert.IsNotNull(request.Headers);
-        Assert.AreEqual(0, request.Headers.Count);
+        Assert.IsEmpty(request.Headers);
     }
 
     [TestMethod]
@@ -62,7 +62,7 @@ public class RestClientTests
         request.QueryParameters = null!;
 
         Assert.IsNotNull(request.QueryParameters);
-        Assert.AreEqual(0, request.QueryParameters.Count);
+        Assert.IsEmpty(request.QueryParameters);
     }
 
     [TestMethod]
@@ -628,10 +628,10 @@ public class RestClientTests
         Assert.IsNull(response.Exception);
         Assert.IsTrue(responseMessage.IsDisposed);
         Assert.AreEqual("plain-text", response.Response!.Content);
-        Assert.IsTrue(response.Response.Headers.ContainsKey("X-Test-Header"));
+        Assert.Contains("X-Test-Header", response.Response.Headers.Keys);
         CollectionAssert.Contains(response.Response.Headers["X-Test-Header"], "response-value");
-        Assert.IsTrue(response.Response.Headers.ContainsKey("x-test-header"));
-        Assert.IsTrue(response.Response.ContentHeaders.ContainsKey("X-Content-Test"));
+        Assert.Contains("x-test-header", response.Response.Headers.Keys);
+        Assert.Contains("X-Content-Test", response.Response.ContentHeaders.Keys);
         CollectionAssert.Contains(response.Response.ContentHeaders["X-Content-Test"], "content-value");
     }
 
@@ -802,13 +802,13 @@ public class RestClientTests
         Assert.IsNull(typeof(RestRequest).GetProperty("Parameters"));
         Assert.IsNull(typeof(RestRequest).GetProperty("FormParameters"));
 
-        var postForm = typeof(RestRequest).GetMethod("PostForm", new[] { typeof(string), typeof(Dictionary<string, string>), typeof(Dictionary<string, object>) });
+        var postForm = typeof(RestRequest).GetMethod("PostForm", [typeof(string), typeof(Dictionary<string, string>), typeof(Dictionary<string, object>)]);
         Assert.IsNotNull(postForm);
 
         foreach (var methodName in new[] { "Get", "Post", "Put", "Patch", "Delete", "Create", "WithContent" })
         {
             var overloads = typeof(RestRequest).GetMethods().Where(m => m.Name == methodName).ToList();
-            Assert.IsTrue(overloads.Any(m => m.GetParameters().Any(p => p.Name == "queryParameters" && p.ParameterType == typeof(Dictionary<string, object>))));
+            Assert.IsNotNull(overloads.SingleOrDefault(m => m.GetParameters().Any(p => p.Name == "queryParameters" && p.ParameterType == typeof(Dictionary<string, object>))));
         }
 
         Assert.DoesNotContain("GetAsync", names);
@@ -851,13 +851,13 @@ public class RestClientTests
         Assert.IsNull(typeof(RestRequest).GetProperty("Parameters"));
         Assert.IsNull(typeof(RestRequest).GetProperty("FormParameters"));
 
-        var postForm = typeof(RestRequest).GetMethod("PostForm", new[] { typeof(string), typeof(Dictionary<string, string>), typeof(Dictionary<string, object>) });
+        var postForm = typeof(RestRequest).GetMethod("PostForm", [typeof(string), typeof(Dictionary<string, string>), typeof(Dictionary<string, object>)]);
         Assert.IsNotNull(postForm);
 
         foreach (var methodName in new[] { "Get", "Post", "Put", "Patch", "Delete", "Create", "WithContent" })
         {
             var overloads = typeof(RestRequest).GetMethods().Where(m => m.Name == methodName).ToList();
-            Assert.IsTrue(overloads.Any(m => m.GetParameters().Any(p => p.Name == "queryParameters" && p.ParameterType == typeof(Dictionary<string, object>))));
+            Assert.IsNotNull(overloads.SingleOrDefault(m => m.GetParameters().Any(p => p.Name == "queryParameters" && p.ParameterType == typeof(Dictionary<string, object>))));
         }
 
         Assert.DoesNotContain("GetAsync", names);
