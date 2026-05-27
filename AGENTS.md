@@ -150,6 +150,25 @@ If adding a dependency is necessary:
 - Prefer explicit behavior over hidden side effects.
 - Preserve extension points and virtual methods.
 
+## Analyzer and IDE message hygiene
+
+For routine code changes, avoid introducing new compiler warnings, nullable warnings, or IDE/analyzer messages in touched files.
+
+When editing library code:
+
+- keep nullable annotations aligned with actual runtime behavior;
+- prefer modern C# forms already used in the repo, such as `??=`, `using var`, range syntax, collection expressions, and single-character overloads like `Contains('?')` where applicable;
+- mark private helper methods `static` when they do not access instance state;
+- do not mark public, protected, virtual, or extension-point members `static` just to satisfy analyzers.
+
+When editing tests:
+
+- prefer MSTest-specific assertions such as `Assert.IsEmpty`, `Assert.Contains`, `Assert.DoesNotContain`, `Assert.HasCount`, and `CollectionAssert.Contains` when they express the same intent clearly;
+- avoid weakening assertions merely to satisfy an analyzer;
+- keep test style cleanup separate from behavior changes unless the cleanup is directly related to the test being changed.
+
+If an analyzer suggestion makes code less clear or changes behavior, leave it alone and mention the reason in the PR summary.
+
 ## Pull request checklist
 
 Before opening or finalizing a PR, verify:
@@ -162,4 +181,5 @@ Before opening or finalizing a PR, verify:
 - `dotnet test` was run, or the exact inability to run it is documented;
 - no unsupported APIs were introduced;
 - no package metadata changed accidentally;
+- no new compiler warnings, nullable warnings, or IDE/analyzer messages were introduced in changed files, or any remaining messages are explained in the PR summary;
 - behavior changes are intentional and documented.
