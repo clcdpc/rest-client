@@ -14,8 +14,8 @@ namespace Clc.Rest.Models
         /// <summary>
         /// Response content
         /// </summary>
-        public string Content { get; set; }
-        public string ContentType { get; set; }
+        public string? Content { get; set; }
+        public string ContentType { get; set; } = string.Empty;
 
         /// <summary>
         /// Headers
@@ -32,12 +32,12 @@ namespace Clc.Rest.Models
         /// <summary>
         /// Reason phrase
         /// </summary>
-        public string ReasonPhrase { get; set; }
+        public string? ReasonPhrase { get; set; }
 
         /// <summary>
         /// Request that generated the response
         /// </summary>
-        public HttpRequestMessage RequestMessage { get; set; }
+        public HttpRequestMessage? RequestMessage { get; set; }
 
         /// <summary>
         /// Status code
@@ -47,9 +47,9 @@ namespace Clc.Rest.Models
         /// <summary>
         /// Version
         /// </summary>
-        public Version Version { get; set; }
+        public Version? Version { get; set; }
 
-        public string FormattedBody { get; set; }
+        public string? FormattedBody { get; set; }
 
         /// <summary>
         /// Default constructor
@@ -59,7 +59,7 @@ namespace Clc.Rest.Models
 
         }
 
-        public HttpResponse(HttpResponseMessage response, string content)
+        public HttpResponse(HttpResponseMessage response, string? content)
         {
             Content = content;
             ContentType = response.Content?.Headers?.ContentType?.ToString() ?? "";
