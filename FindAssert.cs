@@ -1,0 +1,19 @@
+using System;
+using System.Linq;
+using System.Reflection;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+class Program
+{
+    static void Main()
+    {
+        var methods = typeof(Assert).GetMethods();
+        foreach (var m in methods)
+        {
+            if (m.Name.Contains("Throw"))
+            {
+                Console.WriteLine(m.Name);
+            }
+        }
+    }
+}
