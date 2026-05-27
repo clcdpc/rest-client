@@ -100,22 +100,20 @@ namespace Clc.Rest
                     : await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false);
 
                 var sw = Stopwatch.StartNew();
-                using (var httpResponse = await Client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false))
-                {
-                    response.ResponseTime = sw.ElapsedMilliseconds;
-                    var responseContent = httpResponse.Content == null
-                        ? null
-                        : await ReadContentAsStringAsync(httpResponse.Content, cancellationToken).ConfigureAwait(false);
-                    response.Response = new HttpResponse(httpResponse, responseContent);
+                using var httpResponse = await Client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+                response.ResponseTime = sw.ElapsedMilliseconds;
+                var responseContent = httpResponse.Content == null
+                    ? null
+                    : await ReadContentAsStringAsync(httpResponse.Content, cancellationToken).ConfigureAwait(false);
+                response.Response = new HttpResponse(httpResponse, responseContent);
 
-                    if (request.FormatOutputAsync != null)
-                    {
-                        response.Data = (T?)await request.FormatOutputAsync(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        response.Data = await FormatResponseAsync<T>(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
-                    }
+                if (request.FormatOutputAsync != null)
+                {
+                    response.Data = (T?)await request.FormatOutputAsync(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    response.Data = await FormatResponseAsync<T>(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -218,7 +216,7 @@ namespace Clc.Rest
             return Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
         }
 
-        private Uri AppendQueryString(Uri requestUri, string queryToAppend)
+        private static Uri AppendQueryString(Uri requestUri, string queryToAppend)
         {
             if (requestUri.IsAbsoluteUri)
             {
@@ -232,10 +230,10 @@ namespace Clc.Rest
 
             var originalUri = requestUri.OriginalString;
             var fragmentIndex = originalUri.IndexOf('#');
-            var pathAndQuery = fragmentIndex >= 0 ? originalUri.Substring(0, fragmentIndex) : originalUri;
-            var fragment = fragmentIndex >= 0 ? originalUri.Substring(fragmentIndex) : string.Empty;
+            var pathAndQuery = fragmentIndex >= 0 ? originalUri[..fragmentIndex] : originalUri;
+            var fragment = fragmentIndex >= 0 ? originalUri[fragmentIndex..] : string.Empty;
 
-            var separator = pathAndQuery.Contains("?") ? "&" : "?";
+            var separator = pathAndQuery.Contains('?') ? "&" : "?";
             return new Uri($"{pathAndQuery}{separator}{queryToAppend}{fragment}", UriKind.Relative);
         }
 
