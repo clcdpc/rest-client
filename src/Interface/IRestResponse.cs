@@ -11,21 +11,21 @@ namespace Clc.Rest
         /// <summary>
         /// Deserialized data object from response XML
         /// </summary>
-        T Data { get; set; }
+        T? Data { get; set; }
 
         /// <summary>
         /// The raw response from the PAPI service
         /// </summary>
-        HttpResponse Response { get; set; }
+        HttpResponse? Response { get; set; }
 
         /// <summary>
         /// The request that was sent to the PAPI service
         /// </summary>
-        HttpRequestMessage Request { get; set; }
+        HttpRequestMessage? Request { get; set; }
 
-        string BodyString { get; set; }
+        string? BodyString { get; set; }
 
-        Exception Exception { get; set; }
+        Exception? Exception { get; set; }
 
         /// <summary>
         /// Response time, in milliseconds

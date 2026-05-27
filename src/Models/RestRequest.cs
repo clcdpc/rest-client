@@ -14,8 +14,8 @@ namespace Clc.Rest.Models
 
         public HttpMethod Method { get; set; } = HttpMethod.Get;
         public string Path { get; set; } = string.Empty;
-        public object Body { get; set; }
-        public HttpContent Content { get; set; }
+        public object? Body { get; set; }
+        public HttpContent? Content { get; set; }
 
         public Dictionary<string, string> Headers
         {
@@ -29,55 +29,55 @@ namespace Clc.Rest.Models
             set => _queryParameters = value ?? new Dictionary<string, object>();
         }
 
-        public Func<HttpResponseMessage, string, CancellationToken, Task<object>> FormatOutputAsync { get; set; }
-        public ISerializer Serializer { get; set; } = null;
-        public IAuthenticator Authenticator { get; set; } = null;
+        public Func<HttpResponseMessage, string?, CancellationToken, Task<object?>>? FormatOutputAsync { get; set; }
+        public ISerializer? Serializer { get; set; }
+        public IAuthenticator? Authenticator { get; set; }
 
         public RestRequest()
         {
         }
 
-        public RestRequest(string path, object body = null, Dictionary<string, object> queryParameters = null)
+        public RestRequest(string path, object? body = null, Dictionary<string, object>? queryParameters = null)
             : this(HttpMethod.Get, path, body, queryParameters)
         {
         }
 
-        public RestRequest(HttpMethod method, string path, object body = null, Dictionary<string, object> queryParameters = null)
+        public RestRequest(HttpMethod method, string path, object? body = null, Dictionary<string, object>? queryParameters = null)
         {
             Method = method ?? HttpMethod.Get;
             Path = path ?? string.Empty;
-            QueryParameters = queryParameters;
+            QueryParameters = queryParameters ?? new Dictionary<string, object>();
             Body = body;
         }
 
-        public static RestRequest Get(string path, Dictionary<string, object> queryParameters = null) =>
+        public static RestRequest Get(string path, Dictionary<string, object>? queryParameters = null) =>
             new RestRequest(HttpMethod.Get, path, null, queryParameters);
 
-        public static RestRequest Delete(string path, Dictionary<string, object> queryParameters = null) =>
+        public static RestRequest Delete(string path, Dictionary<string, object>? queryParameters = null) =>
             new RestRequest(HttpMethod.Delete, path, null, queryParameters);
 
-        public static RestRequest Post(string path, object body = null, Dictionary<string, object> queryParameters = null) =>
+        public static RestRequest Post(string path, object? body = null, Dictionary<string, object>? queryParameters = null) =>
             new RestRequest(HttpMethod.Post, path, body, queryParameters);
 
-        public static RestRequest Put(string path, object body = null, Dictionary<string, object> queryParameters = null) =>
+        public static RestRequest Put(string path, object? body = null, Dictionary<string, object>? queryParameters = null) =>
             new RestRequest(HttpMethod.Put, path, body, queryParameters);
 
-        public static RestRequest Patch(string path, object body = null, Dictionary<string, object> queryParameters = null) =>
+        public static RestRequest Patch(string path, object? body = null, Dictionary<string, object>? queryParameters = null) =>
             new RestRequest(new HttpMethod("PATCH"), path, body, queryParameters);
 
-        public static RestRequest PostForm(string path, Dictionary<string, string> formValues, Dictionary<string, object> queryParameters = null) =>
+        public static RestRequest PostForm(string path, Dictionary<string, string>? formValues, Dictionary<string, object>? queryParameters = null) =>
             new RestRequest(HttpMethod.Post, path, null, queryParameters)
             {
                 Content = new FormUrlEncodedContent(formValues ?? new Dictionary<string, string>())
             };
 
-        public static RestRequest WithContent(HttpMethod method, string path, HttpContent content, Dictionary<string, object> queryParameters = null) =>
+        public static RestRequest WithContent(HttpMethod method, string path, HttpContent? content, Dictionary<string, object>? queryParameters = null) =>
             new RestRequest(method, path, null, queryParameters)
             {
                 Content = content
             };
 
-        public static RestRequest Create(HttpMethod method, string path, object body = null, Dictionary<string, object> queryParameters = null) =>
+        public static RestRequest Create(HttpMethod method, string path, object? body = null, Dictionary<string, object>? queryParameters = null) =>
             new RestRequest(method, path, body, queryParameters);
     }
 }

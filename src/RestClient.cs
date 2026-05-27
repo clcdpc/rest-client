@@ -20,10 +20,10 @@ namespace Clc.Rest
         public virtual string PathPrefix { get; set; } = "";
         public ISerializer Serializer { get; set; } = new JsonNetSerializer();
         public IDeserializer Deserializer { get; set; } = new JsonNetDeserializer();
-        public IAuthenticator Authenticator { get; set; }
+        public IAuthenticator? Authenticator { get; set; }
         public MediaTypeWithQualityHeaderValue Accept { get; set; } = new MediaTypeWithQualityHeaderValue("application/json");
 
-        private HttpClient _client;
+        private HttpClient? _client;
         protected HttpClient Client
         {
             get
@@ -33,10 +33,10 @@ namespace Clc.Rest
         }
 
         protected RestClient() : this(null, null) { }
-        protected RestClient(string baseUrl) : this(baseUrl, null) { }
+        protected RestClient(string? baseUrl) : this(baseUrl, null) { }
         protected RestClient(HttpClient client) : this(null, client) { }
 
-        protected RestClient(string baseUrl, HttpClient client)
+        protected RestClient(string? baseUrl, HttpClient? client)
         {
             if (!string.IsNullOrEmpty(baseUrl?.Trim()))
             {
@@ -49,9 +49,9 @@ namespace Clc.Rest
         }
 
 
-        public virtual Task<T> FormatResponseAsync<T>(HttpResponseMessage response, string content, CancellationToken cancellationToken = default)
+        public virtual Task<T?> FormatResponseAsync<T>(HttpResponseMessage response, string? content, CancellationToken cancellationToken = default)
         {
-            T output = default;
+            T? output = default;
 
             if (response.IsSuccessStatusCode)
             {
@@ -110,7 +110,7 @@ namespace Clc.Rest
 
                     if (request.FormatOutputAsync != null)
                     {
-                        response.Data = (T)await request.FormatOutputAsync(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
+                        response.Data = (T?)await request.FormatOutputAsync(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
@@ -128,7 +128,7 @@ namespace Clc.Rest
 
 
         public virtual RestRequest PreformatRestRequest(RestRequest request) => request;
-        public virtual string PreDeserialize(string responseBody) => responseBody;
+        public virtual string PreDeserialize(string? responseBody) => responseBody ?? string.Empty;
 
         public virtual string BuildUrl(RestRequest request)
         {
@@ -184,7 +184,7 @@ namespace Clc.Rest
 
         protected virtual HttpRequestMessage AddParameters(RestRequest request, HttpRequestMessage httpRequest)
         {
-            if (!request.QueryParameters.Any())
+            if (request.QueryParameters.Count == 0)
             {
                 return httpRequest;
             }
@@ -200,9 +200,9 @@ namespace Clc.Rest
                 .Select(parameter => $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}")
                 .ToList();
 
-            if (nonEmptyParameters.Any())
+            if (nonEmptyParameters.Count > 0)
             {
-                httpRequest.RequestUri = AppendQueryString(httpRequest.RequestUri, string.Join("&", nonEmptyParameters));
+                httpRequest.RequestUri = AppendQueryString(httpRequest.RequestUri ?? throw new InvalidOperationException("Request URI must be set before adding query parameters."), string.Join("&", nonEmptyParameters));
             }
 
             return httpRequest;
@@ -210,7 +210,7 @@ namespace Clc.Rest
 
         private static string ConvertQueryParameterValue(object value)
         {
-            return Convert.ToString(value, CultureInfo.InvariantCulture);
+            return Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
         }
 
         private Uri AppendQueryString(Uri requestUri, string queryToAppend)
