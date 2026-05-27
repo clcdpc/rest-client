@@ -24,13 +24,7 @@ namespace Clc.Rest
         public MediaTypeWithQualityHeaderValue Accept { get; set; } = new MediaTypeWithQualityHeaderValue("application/json");
 
         private HttpClient? _client;
-        protected HttpClient Client
-        {
-            get
-            {
-                return _client ??= new HttpClient();
-            }
-        }
+        protected HttpClient Client => _client ??= new HttpClient();
 
         protected RestClient() : this(null, null) { }
         protected RestClient(string? baseUrl) : this(baseUrl, null) { }
