@@ -4,6 +4,10 @@ A simple library for making REST requests.
 
 ## 3.0.0-alpha.1 breaking changes
 
+Target framework:
+
+- v3 alpha targets/requires **.NET 8+** (`net8.0`) for the library.
+
 Execution uses one async method:
 
 - `ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken = default)`

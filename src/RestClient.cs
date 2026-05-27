@@ -236,10 +236,7 @@ namespace Clc.Rest
 
         private static async Task<string> ReadContentAsStringAsync(HttpContent content, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var value = await content.ReadAsStringAsync().ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            return value;
+            return await content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         }
 
     }
