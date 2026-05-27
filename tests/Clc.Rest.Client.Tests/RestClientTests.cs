@@ -23,8 +23,8 @@ public class RestClientTests
         Assert.AreEqual(string.Empty, request.Path);
         Assert.IsNotNull(request.Headers);
         Assert.IsNotNull(request.QueryParameters);
-        Assert.AreEqual(0, request.Headers.Count);
-        Assert.AreEqual(0, request.QueryParameters.Count);
+        Assert.IsEmpty(request.Headers);
+        Assert.IsEmpty(request.QueryParameters);
     }
 
     [TestMethod]
@@ -51,7 +51,7 @@ public class RestClientTests
         request.Headers = null!;
 
         Assert.IsNotNull(request.Headers);
-        Assert.AreEqual(0, request.Headers.Count);
+        Assert.IsEmpty(request.Headers);
     }
 
     [TestMethod]
@@ -62,7 +62,7 @@ public class RestClientTests
         request.QueryParameters = null!;
 
         Assert.IsNotNull(request.QueryParameters);
-        Assert.AreEqual(0, request.QueryParameters.Count);
+        Assert.IsEmpty(request.QueryParameters);
     }
 
     [TestMethod]
@@ -756,8 +756,8 @@ public class RestClientTests
     {
         var queryParameters = new Dictionary<string, object> { ["page"] = 2, ["includeDeleted"] = false };
 
-        var requests = new[]
-        {
+        RestRequest[] requests =
+        [
             RestRequest.Get("/items", queryParameters),
             RestRequest.Delete("/items", queryParameters),
             RestRequest.Post("/items", new { Name = "x" }, queryParameters),
@@ -765,7 +765,7 @@ public class RestClientTests
             RestRequest.Patch("/items", new { Name = "x" }, queryParameters),
             RestRequest.Create(HttpMethod.Trace, "/items", null, queryParameters),
             RestRequest.WithContent(HttpMethod.Post, "/items", new StringContent("x"), queryParameters)
-        };
+        ];
 
         foreach (var request in requests)
         {
@@ -808,7 +808,7 @@ public class RestClientTests
         foreach (var methodName in new[] { "Get", "Post", "Put", "Patch", "Delete", "Create", "WithContent" })
         {
             var overloads = typeof(RestRequest).GetMethods().Where(m => m.Name == methodName).ToList();
-            Assert.IsTrue(overloads.Any(m => m.GetParameters().Any(p => p.Name == "queryParameters" && p.ParameterType == typeof(Dictionary<string, object>))));
+            Assert.IsNotNull(overloads.SingleOrDefault(m => m.GetParameters().Any(p => p.Name == "queryParameters" && p.ParameterType == typeof(Dictionary<string, object>))));
         }
 
         Assert.DoesNotContain("GetAsync", names);
@@ -857,7 +857,7 @@ public class RestClientTests
         foreach (var methodName in new[] { "Get", "Post", "Put", "Patch", "Delete", "Create", "WithContent" })
         {
             var overloads = typeof(RestRequest).GetMethods().Where(m => m.Name == methodName).ToList();
-            Assert.IsTrue(overloads.Any(m => m.GetParameters().Any(p => p.Name == "queryParameters" && p.ParameterType == typeof(Dictionary<string, object>))));
+            Assert.IsNotNull(overloads.SingleOrDefault(m => m.GetParameters().Any(p => p.Name == "queryParameters" && p.ParameterType == typeof(Dictionary<string, object>))));
         }
 
         Assert.DoesNotContain("GetAsync", names);
@@ -1027,12 +1027,8 @@ public class RestClientTests
         }
     }
 
-    private sealed class DisposableTrackingContent : StringContent
+    private sealed class DisposableTrackingContent(string content) : StringContent(content, Encoding.UTF8, "application/json")
     {
-        public DisposableTrackingContent(string content) : base(content, Encoding.UTF8, "application/json")
-        {
-        }
-
         public bool IsDisposed { get; private set; }
 
         protected override void Dispose(bool disposing)
