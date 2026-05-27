@@ -12,12 +12,12 @@ namespace Clc.Rest
     {
         HttpMethod Method { get; set; }
         string Path { get; set; }
-        object Body { get; set; }
-        Func<HttpResponseMessage, string, CancellationToken, Task<object>> FormatOutputAsync { get; set; }
+        object? Body { get; set; }
+        Func<HttpResponseMessage, string?, CancellationToken, Task<object?>>? FormatOutputAsync { get; set; }
         Dictionary<string, string> Headers { get; set; }
         Dictionary<string, object> QueryParameters { get; set; }
-        HttpContent Content { get; set; }
-        ISerializer Serializer { get; set; }
-        IAuthenticator Authenticator { get; set; }
+        HttpContent? Content { get; set; }
+        ISerializer? Serializer { get; set; }
+        IAuthenticator? Authenticator { get; set; }
     }
 }
