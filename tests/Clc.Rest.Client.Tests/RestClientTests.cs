@@ -30,7 +30,7 @@ public class RestClientTests
     [TestMethod]
     public void RestRequest_Constructor_Normalizes_Null_Path_To_Empty_String()
     {
-        var request = new RestRequest(HttpMethod.Get, null);
+        var request = new RestRequest(HttpMethod.Get, null!);
 
         Assert.AreEqual(string.Empty, request.Path);
     }
@@ -38,7 +38,7 @@ public class RestClientTests
     [TestMethod]
     public void RestRequest_Constructor_Normalizes_Null_Method_To_Get()
     {
-        var request = new RestRequest(null, "/items");
+        var request = new RestRequest(null!, "/items");
 
         Assert.AreEqual(HttpMethod.Get, request.Method);
     }
@@ -48,7 +48,7 @@ public class RestClientTests
     {
         var request = new RestRequest();
 
-        request.Headers = null;
+        request.Headers = null!;
 
         Assert.IsNotNull(request.Headers);
         Assert.AreEqual(0, request.Headers.Count);
@@ -59,7 +59,7 @@ public class RestClientTests
     {
         var request = new RestRequest();
 
-        request.QueryParameters = null;
+        request.QueryParameters = null!;
 
         Assert.IsNotNull(request.QueryParameters);
         Assert.AreEqual(0, request.QueryParameters.Count);
@@ -83,7 +83,7 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, null), TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Get, null!), TestContext.CancellationToken);
 
         Assert.IsNull(response.Exception);
         Assert.AreEqual("https://example.test/", handler.LastRequest!.RequestUri!.AbsoluteUri);
@@ -299,7 +299,7 @@ public class RestClientTests
 
         var response = await client.ExecuteAsync<Dictionary<string, string>>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
-        Assert.AreEqual("{\"message\":\"ok\"}", response.Response.Content);
+        Assert.AreEqual("{\"message\":\"ok\"}", response.Response!.Content);
     }
 
     [TestMethod]
@@ -311,7 +311,7 @@ public class RestClientTests
         var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.AreEqual("plain-text", response.Data);
-        Assert.AreEqual("plain-text", response.Response.Content);
+        Assert.AreEqual("plain-text", response.Response!.Content);
     }
 
     [TestMethod]
@@ -337,8 +337,8 @@ public class RestClientTests
 
         var response = await client.ExecuteAsync<Payload>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
-        Assert.AreEqual(payload, response.Response.Content);
-        Assert.AreEqual("FromBody", response.Data.Name);
+        Assert.AreEqual(payload, response.Response!.Content);
+        Assert.AreEqual("FromBody", response.Data!.Name);
     }
 
     [TestMethod]
@@ -362,8 +362,8 @@ public class RestClientTests
         var response = await client.ExecuteAsync<Payload>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.AreEqual(1, content.ReadCount);
-        Assert.AreEqual("Once", response.Data.Name);
-        Assert.AreEqual("{\"Name\":\"Once\"}", response.Response.Content);
+        Assert.AreEqual("Once", response.Data!.Name);
+        Assert.AreEqual("{\"Name\":\"Once\"}", response.Response!.Content);
     }
 
     [TestMethod]
@@ -386,14 +386,14 @@ public class RestClientTests
         var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
         var client = CreateClient(handler);
         var request = new RestRequest(HttpMethod.Get, "/data");
-        string capturedContent = string.Empty;
+        string? capturedContent = string.Empty;
         CancellationToken capturedToken = default;
 
         request.FormatOutputAsync = (_, formatterContent, cancellationToken) =>
         {
             capturedContent = formatterContent;
             capturedToken = cancellationToken;
-            return Task.FromResult<object>($"formatted:{formatterContent}");
+            return Task.FromResult<object?>($"formatted:{formatterContent}");
         };
 
         var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
@@ -403,7 +403,7 @@ public class RestClientTests
         Assert.AreEqual("from formatter", capturedContent);
         Assert.AreEqual(TestContext.CancellationToken, capturedToken);
         Assert.AreEqual(1, content.ReadCount);
-        Assert.AreEqual("from formatter", response.Response.Content);
+        Assert.AreEqual("from formatter", response.Response!.Content);
     }
 
 
@@ -607,8 +607,8 @@ public class RestClientTests
 
         Assert.IsTrue(responseMessage.IsDisposed);
         Assert.IsTrue(content.IsDisposed);
-        Assert.AreEqual("Disposed", response.Data.Name);
-        Assert.AreEqual("{\"Name\":\"Disposed\"}", response.Response.Content);
+        Assert.AreEqual("Disposed", response.Data!.Name);
+        Assert.AreEqual("{\"Name\":\"Disposed\"}", response.Response!.Content);
     }
 
 
@@ -627,12 +627,12 @@ public class RestClientTests
 
         Assert.IsNull(response.Exception);
         Assert.IsTrue(responseMessage.IsDisposed);
-        Assert.AreEqual("plain-text", response.Response.Content);
+        Assert.AreEqual("plain-text", response.Response!.Content);
         Assert.IsTrue(response.Response.Headers.ContainsKey("X-Test-Header"));
         CollectionAssert.Contains(response.Response.Headers["X-Test-Header"], "response-value");
         Assert.IsTrue(response.Response.Headers.ContainsKey("x-test-header"));
-        Assert.IsTrue(response.Response.ContentHeaders.ContainsKey("X-Content-Test"));
-        CollectionAssert.Contains(response.Response.ContentHeaders["X-Content-Test"], "content-value");
+        Assert.IsTrue(response.Response!.ContentHeaders.ContainsKey("X-Content-Test"));
+        CollectionAssert.Contains(response.Response!.ContentHeaders["X-Content-Test"], "content-value");
     }
 
     [TestMethod]

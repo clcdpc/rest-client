@@ -8,20 +8,20 @@ namespace Clc.Rest.Models
         /// <summary>
         /// Deserialized data object from response XML
         /// </summary>
-        public T Data { get; set; }
+        public T? Data { get; set; }
 
         /// <summary>
         /// The raw response from the PAPI service
         /// </summary>
-        public HttpResponse Response { get; set; } = new HttpResponse();
+        public HttpResponse? Response { get; set; } = new HttpResponse();
 
         /// <summary>
         /// The request that was sent to the PAPI service
         /// </summary>
-        public HttpRequestMessage Request { get; set; } = new HttpRequestMessage();
-        public string BodyString { get; set; } = string.Empty;
+        public HttpRequestMessage? Request { get; set; } = new HttpRequestMessage();
+        public string? BodyString { get; set; }
 
-        public Exception Exception { get; set; }
+        public Exception? Exception { get; set; }
 
         /// <summary>
         /// Response time, in milliseconds
@@ -51,7 +51,7 @@ namespace Clc.Rest.Models
         {
         }
 
-        public RestResponse(HttpRequestMessage request, string bodyString)
+        public RestResponse(HttpRequestMessage request, string? bodyString)
         {
             Request = request;
             BodyString = bodyString;
