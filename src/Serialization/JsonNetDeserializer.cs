@@ -9,6 +9,11 @@ namespace Clc.Rest.Serialization
     {
         public T Deserialize<T>(string input)
         {
+            if (input == null)
+            {
+                return default!;
+            }
+
             return JsonConvert.DeserializeObject<T>(input)!;
         }
     }
