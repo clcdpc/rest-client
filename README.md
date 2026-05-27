@@ -2,7 +2,13 @@
 
 A simple library for making REST requests.
 
+## Framework support
+
+`Clc.Rest.Client` v3 alpha targets **.NET 8 (`net8.0`) only**. Consumers must run on .NET 8 or newer.
+
 ## 3.0.0-alpha.1 breaking changes
+
+This prerelease remains on the **alpha** line and introduces a .NET 8+ requirement.
 
 Execution uses one async method:
 
