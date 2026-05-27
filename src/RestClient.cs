@@ -187,16 +187,22 @@ namespace Clc.Rest
                 return httpRequest;
             }
 
-            var nonEmptyParameters = request.QueryParameters
-                .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Key) && parameter.Value != null)
-                .Select(parameter => new
+            var nonEmptyParameters = new List<string>(request.QueryParameters.Count);
+            foreach (var parameter in request.QueryParameters)
+            {
+                if (string.IsNullOrWhiteSpace(parameter.Key) || parameter.Value == null)
                 {
-                    parameter.Key,
-                    Value = ConvertQueryParameterValue(parameter.Value!)
-                })
-                .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Value))
-                .Select(parameter => $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}")
-                .ToList();
+                    continue;
+                }
+
+                var value = ConvertQueryParameterValue(parameter.Value);
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
+                nonEmptyParameters.Add($"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(value)}");
+            }
 
             if (nonEmptyParameters.Count > 0)
             {
