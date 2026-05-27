@@ -2,7 +2,11 @@
 
 A simple library for making REST requests.
 
-## 3.0.0-alpha.1 breaking changes
+## Target framework
+
+`Clc.Rest.Client` v3 alpha targets **.NET 8+** (`net8.0`) only.
+
+## 3.0.0-alpha.1 / net8-only v3 alpha breaking changes
 
 Execution uses one async method:
 

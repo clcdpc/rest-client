@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This repository is a small .NET REST client library. Changes should preserve public API compatibility, documented HTTP behavior, and `netstandard2.0` library compatibility unless the task explicitly asks for a breaking change.
+This repository is a small .NET REST client library. Changes should preserve public API compatibility, documented HTTP behavior, and .NET 8+ library compatibility unless the task explicitly asks for a breaking change.
 
 Agents must treat this file as repository policy when proposing, editing, or reviewing code.
 
@@ -16,20 +16,9 @@ Agents must treat this file as repository policy when proposing, editing, or rev
 
 ## Target framework compatibility
 
-The library targets `netstandard2.0`.
+The library targets `net8.0` for the v3 alpha line.
 
-Do not use APIs unavailable to `netstandard2.0` in the library project unless one of these is true:
-
-1. the project is intentionally multi-targeted;
-2. the code is guarded by target-framework conditionals;
-3. the task explicitly asks to change supported frameworks.
-
-The test project may target a newer framework, but that does not mean the library can use newer APIs.
-
-Examples:
-
-- OK in library: `HttpClient.SendAsync(request, cancellationToken)`
-- Not OK in `netstandard2.0` library code: `HttpContent.ReadAsStringAsync(cancellationToken)` unless guarded or multi-targeted
+Use .NET 8 APIs in the library project as needed, while preserving documented behavior and public API compatibility expectations for v3 alpha consumers.
 
 ## Public API compatibility
 
@@ -97,8 +86,7 @@ For cancellation support:
 - Add overloads rather than breaking callers.
 - Pass `CancellationToken` to `HttpClient.SendAsync`.
 - Pass tokens to content reads only where the target framework supports it.
-- Do not introduce non-`netstandard2.0` APIs without guards or multi-targeting.
-- Add tests proving the token reaches the fake `HttpMessageHandler`.
+- - Add tests proving the token reaches the fake `HttpMessageHandler`.
 - Add tests for cancellation before send.
 - Add tests for cancellation during request or response content handling when supported.
 
@@ -166,7 +154,7 @@ If adding a dependency is necessary:
 
 Before opening or finalizing a PR, verify:
 
-- library still compiles for `netstandard2.0`;
+- library still compiles for `net8.0`;
 - existing public overloads remain available;
 - new overloads do not create ambiguous calls;
 - README matches implementation;

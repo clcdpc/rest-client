@@ -234,12 +234,9 @@ namespace Clc.Rest
             return new Uri($"{pathAndQuery}{separator}{queryToAppend}{fragment}", UriKind.Relative);
         }
 
-        private static async Task<string> ReadContentAsStringAsync(HttpContent content, CancellationToken cancellationToken)
+        private static Task<string> ReadContentAsStringAsync(HttpContent content, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var value = await content.ReadAsStringAsync().ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            return value;
+            return content.ReadAsStringAsync(cancellationToken);
         }
 
     }
