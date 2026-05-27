@@ -203,11 +203,11 @@ namespace Clc.Rest
             if (nonEmptyParameters.Count > 0)
             {
                 if (httpRequest.RequestUri == null)
-            {
-                throw new InvalidOperationException("Request URI cannot be null.");
-            }
+                {
+                    throw new InvalidOperationException("Request URI cannot be null.");
+                }
 
-            httpRequest.RequestUri = AppendQueryString(httpRequest.RequestUri, string.Join("&", nonEmptyParameters));
+                httpRequest.RequestUri = AppendQueryString(httpRequest.RequestUri, string.Join("&", nonEmptyParameters));
             }
 
             return httpRequest;
