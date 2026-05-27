@@ -20,10 +20,10 @@ namespace Clc.Rest
         public virtual string PathPrefix { get; set; } = "";
         public ISerializer Serializer { get; set; } = new JsonNetSerializer();
         public IDeserializer Deserializer { get; set; } = new JsonNetDeserializer();
-        public IAuthenticator Authenticator { get; set; }
+        public IAuthenticator? Authenticator { get; set; }
         public MediaTypeWithQualityHeaderValue Accept { get; set; } = new MediaTypeWithQualityHeaderValue("application/json");
 
-        private HttpClient _client;
+        private HttpClient? _client;
         protected HttpClient Client
         {
             get
@@ -51,7 +51,7 @@ namespace Clc.Rest
 
         public virtual Task<T> FormatResponseAsync<T>(HttpResponseMessage response, string content, CancellationToken cancellationToken = default)
         {
-            T output = default;
+            T? output = default;
 
             if (response.IsSuccessStatusCode)
             {
@@ -71,7 +71,7 @@ namespace Clc.Rest
                 }
             }
 
-            return Task.FromResult(output);
+            return Task.FromResult(output!);
         }
 
         public async Task<IRestResponse<T>> ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken = default)
@@ -210,7 +210,7 @@ namespace Clc.Rest
 
         private static string ConvertQueryParameterValue(object value)
         {
-            return Convert.ToString(value, CultureInfo.InvariantCulture);
+            return Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
         }
 
         private Uri AppendQueryString(Uri requestUri, string queryToAppend)
@@ -237,7 +237,7 @@ namespace Clc.Rest
         private static async Task<string> ReadContentAsStringAsync(HttpContent content, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var value = await content.ReadAsStringAsync().ConfigureAwait(false);
+            var value = await content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             return value;
         }

@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>netstandard2.0</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
 		<RootNamespace>Clc.Rest</RootNamespace>
 		<Authors>Central Library Consortium, Michael Fields</Authors>
 		<Description>simple http client library</Description>
@@ -13,7 +14,7 @@
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageId>Clc.Rest.Client</PackageId>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-		<PackageReleaseNotes>Breaking alpha: simplify execution to a single async ExecuteAsync&lt;T&gt;(RestRequest, CancellationToken) path, add RestRequest factories, replace context-dependent Parameters with QueryParameters and explicit Content/PostForm support, remove synchronous Execute&lt;T&gt;, remove sync-over-async response construction, remove legacy response formatter path, require content-aware async formatting, copy response headers/content headers, support absolute URLs, chain request-hook return values, and harden RestRequest defaults.</PackageReleaseNotes>
+		<PackageReleaseNotes>Breaking alpha: v3 now targets .NET 8+ only, keeps a single async ExecuteAsync&lt;T&gt;(RestRequest, CancellationToken) execution path, keeps RestRequest factories, keeps QueryParameters plus explicit Content/PostForm support, keeps synchronous Execute&lt;T&gt; removed, keeps sync-over-async response construction removed, keeps content-aware async formatting, copies response headers/content headers, supports absolute URLs, chains request-hook return values, and hardens RestRequest defaults.</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>
