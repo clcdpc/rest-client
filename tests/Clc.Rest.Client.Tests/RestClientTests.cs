@@ -46,9 +46,10 @@ public class RestClientTests
     [TestMethod]
     public void RestRequest_Headers_Setter_Normalizes_Null_To_Empty_Dictionary()
     {
-        var request = new RestRequest();
-
-        request.Headers = null!;
+        var request = new RestRequest
+        {
+            Headers = null!
+        };
 
         Assert.IsNotNull(request.Headers);
         Assert.IsEmpty(request.Headers);
@@ -57,9 +58,10 @@ public class RestClientTests
     [TestMethod]
     public void RestRequest_QueryParameters_Setter_Normalizes_Null_To_Empty_Dictionary()
     {
-        var request = new RestRequest();
-
-        request.QueryParameters = null!;
+        var request = new RestRequest
+        {
+            QueryParameters = null!
+        };
 
         Assert.IsNotNull(request.QueryParameters);
         Assert.IsEmpty(request.QueryParameters);
@@ -802,7 +804,7 @@ public class RestClientTests
         Assert.IsNull(typeof(RestRequest).GetProperty("Parameters"));
         Assert.IsNull(typeof(RestRequest).GetProperty("FormParameters"));
 
-        var postForm = typeof(RestRequest).GetMethod("PostForm", new[] { typeof(string), typeof(Dictionary<string, string>), typeof(Dictionary<string, object>) });
+        var postForm = typeof(RestRequest).GetMethod("PostForm", [typeof(string), typeof(Dictionary<string, string>), typeof(Dictionary<string, object>)]);
         Assert.IsNotNull(postForm);
 
         foreach (var methodName in new[] { "Get", "Post", "Put", "Patch", "Delete", "Create", "WithContent" })
@@ -851,7 +853,7 @@ public class RestClientTests
         Assert.IsNull(typeof(RestRequest).GetProperty("Parameters"));
         Assert.IsNull(typeof(RestRequest).GetProperty("FormParameters"));
 
-        var postForm = typeof(RestRequest).GetMethod("PostForm", new[] { typeof(string), typeof(Dictionary<string, string>), typeof(Dictionary<string, object>) });
+        var postForm = typeof(RestRequest).GetMethod("PostForm", [typeof(string), typeof(Dictionary<string, string>), typeof(Dictionary<string, object>)]);
         Assert.IsNotNull(postForm);
 
         foreach (var methodName in new[] { "Get", "Post", "Put", "Patch", "Delete", "Create", "WithContent" })
