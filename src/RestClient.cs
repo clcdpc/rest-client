@@ -28,7 +28,16 @@ namespace Clc.Rest
         {
             get
             {
-                return _client ??= new HttpClient();
+                if (_client == null)
+                {
+                    var client = new HttpClient();
+                    if (Interlocked.CompareExchange(ref _client, client, null) != null)
+                    {
+                        client.Dispose();
+                    }
+                }
+
+                return _client!;
             }
         }
 
