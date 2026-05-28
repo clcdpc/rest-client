@@ -929,6 +929,35 @@ public class RestClientTests
     private static HttpResponseMessage JsonResponse(string content)
         => new(HttpStatusCode.OK) { Content = new StringContent(content, Encoding.UTF8, "application/json") };
 
+
+    [TestMethod]
+    public void JsonNetSerializer_Default_MediaType_Is_ApplicationJson()
+    {
+        var serializer = new JsonNetSerializer();
+
+        Assert.AreEqual("application/json", serializer.MediaType);
+    }
+
+    [TestMethod]
+    public void JsonNetSerializer_Serialize_WithIgnoreNullValues_OmitsNullProperties()
+    {
+        var serializer = new JsonNetSerializer();
+
+        var json = serializer.Serialize(new { Name = "Alice", Nickname = (string?)null }, ignoreNullValues: true);
+
+        Assert.AreEqual("{\"Name\":\"Alice\"}", json);
+    }
+
+    [TestMethod]
+    public void JsonNetSerializer_Serialize_WithIncludeNullValues_IncludesNullProperties()
+    {
+        var serializer = new JsonNetSerializer();
+
+        var json = serializer.Serialize(new { Name = "Alice", Nickname = (string?)null }, ignoreNullValues: false);
+
+        Assert.AreEqual("{\"Name\":\"Alice\",\"Nickname\":null}", json);
+    }
+
     private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> callback) : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _callback = callback;
