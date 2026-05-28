@@ -30,9 +30,13 @@ namespace Clc.Rest
             {
                 if (_client == null)
                 {
-                    Interlocked.CompareExchange(ref _client, new HttpClient(), null);
+                    var client = new HttpClient();
+                    if (Interlocked.CompareExchange(ref _client, client, null) != null)
+                    {
+                        client.Dispose();
+                    }
                 }
-                return _client;
+                return _client!;
             }
         }
 
