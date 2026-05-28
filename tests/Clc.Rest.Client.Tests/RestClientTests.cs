@@ -123,6 +123,34 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public void JsonNetSerializer_Default_MediaType_Is_ApplicationJson()
+    {
+        var serializer = new JsonNetSerializer();
+
+        Assert.AreEqual("application/json", serializer.MediaType);
+    }
+
+    [TestMethod]
+    public void JsonNetSerializer_Serialize_IgnoreNullValues_True_Omits_Null_Properties()
+    {
+        var serializer = new JsonNetSerializer();
+
+        var json = serializer.Serialize(new { Name = "Test", Optional = (string?)null }, ignoreNullValues: true);
+
+        Assert.AreEqual("{\"Name\":\"Test\"}", json);
+    }
+
+    [TestMethod]
+    public void JsonNetSerializer_Serialize_IgnoreNullValues_False_Includes_Null_Properties()
+    {
+        var serializer = new JsonNetSerializer();
+
+        var json = serializer.Serialize(new { Name = "Test", Optional = (string?)null }, ignoreNullValues: false);
+
+        Assert.AreEqual("{\"Name\":\"Test\",\"Optional\":null}", json);
+    }
+
+    [TestMethod]
     public async Task ExecuteAsync_Uses_Post_Factory_Request_With_Body_And_QueryParameters()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
