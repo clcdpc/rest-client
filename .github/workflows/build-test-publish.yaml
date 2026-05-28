@@ -1,0 +1,154 @@
+name: build-test-publish
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+    tags:
+      - "v*.*.*"
+      - "v*.*.*-*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+  DOTNET_VERSION: 8.0.x
+  BUILD_CONFIGURATION: Release
+  PACKAGE_PROJECT: src/Clc.Rest.Client.csproj
+  TEST_PROJECT: tests/Clc.Rest.Client.Tests/Clc.Rest.Client.Tests.csproj
+
+  TEST_RESULTS_DIR: TestResults
+  PACKAGE_OUTPUT_DIR: artifacts/packages
+
+  NUGET_SOURCE: https://api.nuget.org/v3/index.json
+
+jobs:
+  build-test-pack:
+    name: build, test, pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Set package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "PACKAGE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Restore
+        run: dotnet restore "$TEST_PROJECT"
+
+      - name: Build package project
+        run: |
+          build_args=(
+            "$PACKAGE_PROJECT"
+            --configuration "$BUILD_CONFIGURATION"
+            --no-restore
+            -warnaserror
+          )
+
+          if [ -n "$PACKAGE_VERSION" ]; then
+            build_args+=(/p:Version="$PACKAGE_VERSION" /p:PackageVersion="$PACKAGE_VERSION")
+          fi
+
+          dotnet build "${build_args[@]}"
+
+      - name: Build tests
+        run: |
+          build_args=(
+            "$TEST_PROJECT"
+            --configuration "$BUILD_CONFIGURATION"
+            --no-restore
+            -warnaserror
+          )
+
+          if [ -n "$PACKAGE_VERSION" ]; then
+            build_args+=(/p:Version="$PACKAGE_VERSION" /p:PackageVersion="$PACKAGE_VERSION")
+          fi
+
+          dotnet build "${build_args[@]}"
+
+      - name: Test
+        run: >
+          dotnet test "$TEST_PROJECT"
+          --configuration "$BUILD_CONFIGURATION"
+          --no-build
+          --logger trx
+          --results-directory "$TEST_RESULTS_DIR"
+
+      - name: Pack
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: >
+          dotnet pack "$PACKAGE_PROJECT"
+          --configuration "$BUILD_CONFIGURATION"
+          --no-build
+          --output "$PACKAGE_OUTPUT_DIR"
+          /p:Version="$PACKAGE_VERSION"
+          /p:PackageVersion="$PACKAGE_VERSION"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: ${{ env.TEST_RESULTS_DIR }}/*.trx
+          if-no-files-found: ignore
+
+      - name: Upload package artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          if-no-files-found: error
+          path: |
+            ${{ env.PACKAGE_OUTPUT_DIR }}/*.nupkg
+            ${{ env.PACKAGE_OUTPUT_DIR }}/*.snupkg
+
+  publish:
+    name: publish package
+    runs-on: ubuntu-latest
+    needs: build-test-pack
+    if: startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 10
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: packages
+          path: ${{ env.PACKAGE_OUTPUT_DIR }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish package to nuget.org
+        run: >
+          dotnet nuget push "$PACKAGE_OUTPUT_DIR/*.nupkg"
+          --api-key "${{ secrets.NUGET_API_KEY }}"
+          --source "$NUGET_SOURCE"
+          --skip-duplicate
