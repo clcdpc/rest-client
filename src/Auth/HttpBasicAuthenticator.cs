@@ -19,7 +19,7 @@ namespace Clc.Rest.Auth
 
         public HttpRequestMessage Authenticate(HttpClient client, HttpRequestMessage request)
         {
-            var byteArray = Encoding.ASCII.GetBytes($"{Username}:{Password}");
+            var byteArray = Encoding.UTF8.GetBytes($"{Username}:{Password}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
             return request;
         }
