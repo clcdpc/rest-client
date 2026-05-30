@@ -14,6 +14,10 @@ Execution uses one async method:
 
 - `ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken = default)`
 
+To compute the final URI without sending the request, call:
+
+- `BuildRequestUri(RestRequest request)`
+
 Use `RestRequest` factory methods for common request shapes:
 
 - `RestRequest.Get(path, queryParameters)`
@@ -28,6 +32,7 @@ Use `RestRequest` factory methods for common request shapes:
 Behavior:
 
 - `QueryParameters` are always appended to the URL for any method.
+- `BuildRequestUri` applies the same `BaseUrl`, `PathPrefix`, absolute URL handling, existing query string preservation, fragment handling, and query-parameter encoding that `ExecuteAsync` uses when sending a request.
 - `Body` is serialized using `request.Serializer ?? client.Serializer`.
 - `Content` bypasses serialization and is used directly.
 - `PostForm` is a convenience for `application/x-www-form-urlencoded` content.
@@ -40,6 +45,7 @@ var request = RestRequest.Get("/items", new Dictionary<string, object>
     ["limit"] = 50,
     ["includeDeleted"] = false
 });
+var finalUri = client.BuildRequestUri(request); // Use for signing or hashing before sending.
 await client.ExecuteAsync<ItemSearchResult>(request, token);
 
 var createRequest = RestRequest.Post("/items", body, queryParameters);
