@@ -94,7 +94,7 @@ namespace Clc.Rest
                 request = PreformatRestRequest(request ?? throw new ArgumentNullException(nameof(request)));
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var httpRequest = new HttpRequestMessage(request.Method, BuildUrl(request));
+                var httpRequest = new HttpRequestMessage(request.Method, BuildRequestUri(request));
                 httpRequest.Headers.Accept.Add(Accept);
 
                 httpRequest = AddHeaders(request, httpRequest);
@@ -136,6 +136,19 @@ namespace Clc.Rest
 
         public virtual RestRequest PreformatRestRequest(RestRequest request) => request;
         public virtual string PreDeserialize(string responseBody) => responseBody;
+
+
+        public virtual Uri BuildRequestUri(RestRequest request)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+
+            var requestUri = new Uri(BuildUrl(request), UriKind.RelativeOrAbsolute);
+            var queryString = BuildQueryString(request);
+
+            return string.IsNullOrEmpty(queryString)
+                ? requestUri
+                : AppendQueryString(requestUri, queryString);
+        }
 
         public virtual string BuildUrl(RestRequest request)
         {
@@ -191,9 +204,14 @@ namespace Clc.Rest
 
         protected virtual HttpRequestMessage AddParameters(RestRequest request, HttpRequestMessage httpRequest)
         {
+            return httpRequest;
+        }
+
+        private static string BuildQueryString(RestRequest request)
+        {
             if (request.QueryParameters.Count == 0)
             {
-                return httpRequest;
+                return string.Empty;
             }
 
             var nonEmptyParameters = new List<string>(request.QueryParameters.Count);
@@ -213,17 +231,7 @@ namespace Clc.Rest
                 nonEmptyParameters.Add($"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(value)}");
             }
 
-            if (nonEmptyParameters.Count > 0)
-            {
-                if (httpRequest.RequestUri == null)
-                {
-                    throw new InvalidOperationException("Request URI cannot be null.");
-                }
-
-                httpRequest.RequestUri = AppendQueryString(httpRequest.RequestUri, string.Join("&", nonEmptyParameters));
-            }
-
-            return httpRequest;
+            return string.Join("&", nonEmptyParameters);
         }
 
         private static string ConvertQueryParameterValue(object value)

@@ -225,6 +225,183 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public async Task BuildRequestUri_With_No_QueryParameters_Matches_ExecuteAsync_Sent_Uri()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        var request = RestRequest.Get("/items/current");
+
+        var builtUri = client.BuildRequestUri(request);
+        await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.AreEqual("https://example.test/items/current", builtUri.AbsoluteUri);
+        Assert.AreEqual(builtUri, handler.LastRequest!.RequestUri);
+    }
+
+    [TestMethod]
+    public void BuildRequestUri_Appends_And_Escapes_QueryParameters()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var uri = client.BuildRequestUri(new RestRequest(HttpMethod.Get, "/search", body: null, queryParameters: new Dictionary<string, object>
+        {
+            ["x y"] = "a&b",
+            ["symbols"] = "?:/"
+        }));
+
+        Assert.AreEqual("https://example.test/search?x%20y=a%26b&symbols=%3F%3A%2F", uri.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public void BuildRequestUri_Omits_Null_And_Blank_QueryValues()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var uri = client.BuildRequestUri(new RestRequest(HttpMethod.Get, "/search", body: null, queryParameters: new Dictionary<string, object>
+        {
+            ["null"] = null!,
+            ["empty"] = string.Empty,
+            ["blank"] = "   ",
+            ["valid"] = "kept"
+        }));
+
+        Assert.AreEqual("https://example.test/search?valid=kept", uri.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public void BuildRequestUri_Omits_Blank_QueryKeys()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var uri = client.BuildRequestUri(new RestRequest(HttpMethod.Get, "/search", body: null, queryParameters: new Dictionary<string, object>
+        {
+            [string.Empty] = "empty",
+            ["   "] = "blank",
+            ["valid"] = "kept"
+        }));
+
+        Assert.AreEqual("https://example.test/search?valid=kept", uri.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public void BuildRequestUri_Converts_QueryValues_Using_InvariantCulture()
+    {
+        var originalCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+            var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+            var client = CreateClient(handler);
+
+            var uri = client.BuildRequestUri(new RestRequest(HttpMethod.Get, "/search", body: null, queryParameters: new Dictionary<string, object>
+            {
+                ["amount"] = 1234.56m
+            }));
+
+            Assert.AreEqual("https://example.test/search?amount=1234.56", uri.AbsoluteUri);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+    }
+
+    [TestMethod]
+    public void BuildRequestUri_Appends_To_Existing_Query_With_Ampersand()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var uri = client.BuildRequestUri(new RestRequest(HttpMethod.Get, "/search?existing=1", body: null, queryParameters: new Dictionary<string, object>
+        {
+            ["next"] = "2"
+        }));
+
+        Assert.AreEqual("https://example.test/search?existing=1&next=2", uri.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public void BuildRequestUri_Inserts_QueryParameters_Before_Fragment()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var uri = client.BuildRequestUri(new RestRequest(HttpMethod.Get, "/resource#frag", body: null, queryParameters: new Dictionary<string, object>
+        {
+            ["x"] = "1"
+        }));
+
+        Assert.AreEqual("https://example.test/resource?x=1#frag", uri.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public void BuildRequestUri_Preserves_Absolute_Url_Path_When_BaseUrl_And_PathPrefix_Are_Set()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        client.BaseUrl = "https://api.example.com";
+        client.PathPrefix = "v1";
+
+        var uri = client.BuildRequestUri(new RestRequest(HttpMethod.Get, "https://other.example.com/items/42", body: null, queryParameters: new Dictionary<string, object>
+        {
+            ["q"] = "hello world"
+        }));
+
+        Assert.AreEqual("https://other.example.com/items/42?q=hello%20world", uri.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public async Task BuildRequestUri_Relative_Url_Works_With_HttpClient_BaseAddress()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://example.test/")
+        };
+        var client = new TestRestClient(httpClient) { BaseUrl = string.Empty };
+        var request = new RestRequest(HttpMethod.Get, "relative/path", body: null, queryParameters: new Dictionary<string, object>
+        {
+            ["x"] = "1"
+        });
+
+        var uri = client.BuildRequestUri(request);
+        await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsFalse(uri.IsAbsoluteUri);
+        Assert.AreEqual("relative/path?x=1", uri.OriginalString);
+        Assert.AreEqual("https://example.test/relative/path?x=1", handler.LastRequest!.RequestUri!.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Sends_Exact_Uri_Returned_By_BuildRequestUri()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        var request = new RestRequest(HttpMethod.Get, "/resource?existing=1#frag", body: null, queryParameters: new Dictionary<string, object>
+        {
+            ["x"] = "1"
+        });
+
+        var builtUri = client.BuildRequestUri(request);
+        await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.AreEqual(builtUri, handler.LastRequest!.RequestUri);
+        Assert.AreEqual("https://example.test/resource?existing=1&x=1#frag", handler.LastRequest.RequestUri!.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public void BuildRequestUri_When_Request_Is_Null_Throws_ArgumentNullException()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        Assert.ThrowsExactly<ArgumentNullException>(() => client.BuildRequestUri(null!));
+    }
+
+    [TestMethod]
     public void BuildUrl_Returns_Absolute_Path_Unchanged_When_BaseUrl_Is_Set()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
