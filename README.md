@@ -13,6 +13,7 @@ This prerelease remains on the **alpha** line and introduces a .NET 8+ requireme
 Execution uses one async method:
 
 - `ExecuteAsync<T>(RestRequest request, CancellationToken cancellationToken = default)`
+- `BuildRequestUri(RestRequest request)` to compute the final URI, including query parameters, without sending the request
 
 Use `RestRequest` factory methods for common request shapes:
 
@@ -28,6 +29,7 @@ Use `RestRequest` factory methods for common request shapes:
 Behavior:
 
 - `QueryParameters` are always appended to the URL for any method.
+- `BuildRequestUri` applies the same `BaseUrl`, `PathPrefix`, absolute URL, relative URL, existing query string, fragment, and `QueryParameters` rules that `ExecuteAsync` uses before sending. This lets downstream signing or authentication code hash the exact URI rest-client will send.
 - `Body` is serialized using `request.Serializer ?? client.Serializer`.
 - `Content` bypasses serialization and is used directly.
 - `PostForm` is a convenience for `application/x-www-form-urlencoded` content.
@@ -40,6 +42,7 @@ var request = RestRequest.Get("/items", new Dictionary<string, object>
     ["limit"] = 50,
     ["includeDeleted"] = false
 });
+var finalUri = client.BuildRequestUri(request);
 await client.ExecuteAsync<ItemSearchResult>(request, token);
 
 var createRequest = RestRequest.Post("/items", body, queryParameters);
