@@ -250,6 +250,15 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public void BuildRequestUri_When_Request_Is_Null_Throws_ArgumentNullException()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        Assert.ThrowsExactly<ArgumentNullException>(() => client.BuildRequestUri(null!));
+    }
+
+    [TestMethod]
     public async Task BuildRequestUri_With_No_QueryParameters_Matches_ExecuteAsync_Sent_Uri()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
