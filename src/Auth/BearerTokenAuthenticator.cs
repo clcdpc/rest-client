@@ -1,6 +1,3 @@
-﻿
-using System;
-using System.Collections.Generic;
 using System.Net.Http;
 
 namespace Clc.Rest.Auth
@@ -14,7 +11,7 @@ namespace Clc.Rest.Auth
             Token = token;
         }
 
-        public HttpRequestMessage Authenticate(HttpClient client, HttpRequestMessage request)
+        public HttpRequestMessage Authenticate(HttpRequestMessage request)
         {
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", $"{Token}");
             return request;

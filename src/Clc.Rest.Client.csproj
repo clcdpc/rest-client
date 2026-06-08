@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
@@ -14,7 +14,7 @@
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageId>Clc.Rest.Client</PackageId>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-		<PackageReleaseNotes>Breaking alpha: v3 now targets .NET 8+ only, simplify execution to a single async ExecuteAsync&lt;T&gt;(RestRequest, CancellationToken) path, add RestRequest factories, replace context-dependent Parameters with QueryParameters and explicit Content/PostForm support, remove synchronous Execute&lt;T&gt;, remove sync-over-async response construction, remove legacy response formatter path, require content-aware async formatting, copy response headers/content headers, support absolute URLs, chain request-hook return values, and harden RestRequest defaults.</PackageReleaseNotes>
+		<PackageReleaseNotes>Breaking alpha: v3 now targets .NET 8+ only, simplify execution to a single async ExecuteAsync&lt;T&gt;(RestRequest, CancellationToken) path, add RestRequest factories, replace context-dependent Parameters with QueryParameters and explicit Content/PostForm support, remove synchronous Execute&lt;T&gt;, remove sync-over-async response construction, remove legacy response formatter path, require content-aware async formatting, copy response headers/content headers, support absolute URLs, chain request-hook return values, harden RestRequest defaults, clarify default HttpClient lifetime with a shared internal process-lifetime client, preserve caller-owned injected HttpClient support, and clean up the authenticator API so built-in authenticators mutate only HttpRequestMessage.</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>

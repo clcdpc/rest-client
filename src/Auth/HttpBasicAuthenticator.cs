@@ -1,6 +1,4 @@
-﻿
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 
@@ -17,7 +15,7 @@ namespace Clc.Rest.Auth
             Password = password;
         }
 
-        public HttpRequestMessage Authenticate(HttpClient client, HttpRequestMessage request)
+        public HttpRequestMessage Authenticate(HttpRequestMessage request)
         {
             var byteArray = Encoding.UTF8.GetBytes($"{Username}:{Password}");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));

@@ -18,12 +18,13 @@ public class BearerTokenAuthenticatorTests
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
-        authenticator.Authenticate(client, request);
+        authenticator.Authenticate(request);
 
         // Assert
         Assert.IsNotNull(request.Headers.Authorization);
         Assert.AreEqual("Bearer", request.Headers.Authorization.Scheme);
         Assert.AreEqual(token, request.Headers.Authorization.Parameter);
+        Assert.IsFalse(client.DefaultRequestHeaders.Contains("Authorization"));
     }
 
     [TestMethod]
@@ -42,12 +43,13 @@ public class BearerTokenAuthenticatorTests
         };
 
         // Act
-        authenticator.Authenticate(client, request);
+        authenticator.Authenticate(request);
 
         // Assert
         Assert.IsNotNull(request.Headers.Authorization);
         Assert.AreEqual("Bearer", request.Headers.Authorization.Scheme);
         Assert.AreEqual(token, request.Headers.Authorization.Parameter);
+        Assert.IsFalse(client.DefaultRequestHeaders.Contains("Authorization"));
     }
 
     [TestMethod]
@@ -59,9 +61,10 @@ public class BearerTokenAuthenticatorTests
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        var authenticatedRequest = authenticator.Authenticate(request);
 
         // Assert
         Assert.AreSame(request, authenticatedRequest);
+        Assert.IsFalse(client.DefaultRequestHeaders.Contains("Authorization"));
     }
 }

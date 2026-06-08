@@ -1,9 +1,17 @@
-﻿using System.Net.Http;
+using System.Net.Http;
 
 namespace Clc.Rest.Auth
 {
     public interface IAuthenticator
     {
-        HttpRequestMessage Authenticate(HttpClient client, HttpRequestMessage request);
+        /// <summary>
+        /// Applies authentication state to a request message.
+        /// </summary>
+        /// <param name="request">The request message to authenticate.</param>
+        /// <returns>The authenticated request message.</returns>
+        /// <remarks>
+        /// Implementations must apply authentication per request and must not mutate HttpClient state.
+        /// </remarks>
+        HttpRequestMessage Authenticate(HttpRequestMessage request);
     }
 }

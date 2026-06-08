@@ -20,7 +20,7 @@ public class HttpBasicAuthenticatorTests
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        var authenticatedRequest = authenticator.Authenticate(request);
 
         // Assert
         Assert.IsNotNull(authenticatedRequest.Headers.Authorization);
@@ -28,6 +28,7 @@ public class HttpBasicAuthenticatorTests
 
         string expectedParameter = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
         Assert.AreEqual(expectedParameter, authenticatedRequest.Headers.Authorization.Parameter);
+        Assert.IsFalse(client.DefaultRequestHeaders.Contains("Authorization"));
     }
 
     [TestMethod]
@@ -41,7 +42,7 @@ public class HttpBasicAuthenticatorTests
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        var authenticatedRequest = authenticator.Authenticate(request);
 
         // Assert
         Assert.IsNotNull(authenticatedRequest.Headers.Authorization);
@@ -49,5 +50,6 @@ public class HttpBasicAuthenticatorTests
 
         string expectedParameter = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
         Assert.AreEqual(expectedParameter, authenticatedRequest.Headers.Authorization.Parameter);
+        Assert.IsFalse(client.DefaultRequestHeaders.Contains("Authorization"));
     }
 }

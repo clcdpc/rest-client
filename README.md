@@ -6,6 +6,23 @@ A simple library for making REST requests.
 
 `Clc.Rest.Client` v3 alpha targets **.NET 8 (`net8.0`) only**. Consumers must run on .NET 8 or newer.
 
+
+## HttpClient lifetime
+
+RestClient manages HTTP transport by default. If no `HttpClient` is supplied, RestClient uses a shared process-lifetime `HttpClient` configured for stateless REST calls. Consumers do not need to dispose RestClient only to clean up the default client.
+
+Applications that need custom transport behavior can inject an `HttpClient`:
+
+```csharp
+services.AddHttpClient<MyApiClient>();
+```
+
+Injected `HttpClient` instances are caller-owned. RestClient will use them but will not dispose them.
+
+Request-specific state such as authorization, API keys, Accept headers, custom headers, and content should be configured per request through `RestRequest` or `HttpRequestMessage`. Do not mutate `HttpClient.DefaultRequestHeaders`, `BaseAddress`, or `Timeout` from derived clients when using the default shared client.
+
+If an application needs cookies, proxies, custom certificates, custom TLS settings, handlers, timeout policies, resilience handlers, diagnostics, or other transport-specific behavior, inject a custom `HttpClient`.
+
 ## 3.0.0-alpha.1 breaking changes
 
 This prerelease remains on the **alpha** line and introduces a .NET 8+ requirement.
@@ -60,4 +77,5 @@ Removed in this alpha:
 - async verb helpers (`GetAsync`, `PostAsync`, `PutAsync`, `PatchAsync`, `DeleteAsync`)
 - legacy `FormatResponse<T>(HttpResponseMessage)` override path
 - old `IRestRequest.FormatOutput(HttpResponseMessage)` delegate
+- the old `IAuthenticator.Authenticate(HttpClient, HttpRequestMessage)` signature (authenticators now mutate only `HttpRequestMessage`)
 - synchronous `Execute<T>(RestRequest)` wrapper

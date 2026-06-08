@@ -67,6 +67,55 @@ public class RestClientTests
         Assert.IsEmpty(request.QueryParameters);
     }
 
+
+    [TestMethod]
+    public void DefaultConstructedClients_UseSharedHttpClient()
+    {
+        var first = new TestRestClient();
+        var second = new TestRestClient();
+
+        Assert.AreSame(first.ExposedClient, second.ExposedClient);
+    }
+
+    [TestMethod]
+    public async Task InjectedHttpClient_IsUsedForRequests()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{\"value\":true}"));
+        using var httpClient = new HttpClient(handler);
+        var client = new TestRestClient(httpClient)
+        {
+            BaseUrl = "https://example.test"
+        };
+
+        var response = await client.ExecuteAsync<string>(RestRequest.Get("/test"), TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreSame(httpClient, client.ExposedClient);
+        Assert.IsNotNull(handler.LastRequest);
+        Assert.AreEqual("https://example.test/test", handler.LastRequest.RequestUri!.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_DoesNotMutateDefaultRequestHeaders()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{\"ok\":true}"));
+        using var httpClient = new HttpClient(handler);
+        var client = new TestRestClient(httpClient)
+        {
+            BaseUrl = "https://example.test"
+        };
+
+        var request = RestRequest.Get("/test");
+        request.Headers["X-Test"] = "abc";
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.IsFalse(httpClient.DefaultRequestHeaders.Contains("X-Test"));
+        Assert.IsNotNull(handler.LastRequest);
+        Assert.IsTrue(handler.LastRequest.Headers.Contains("X-Test"));
+    }
+
     [TestMethod]
     public async Task ExecuteAsync_Default_RestRequest_Does_Not_Throw_NullReferenceException()
     {
@@ -1129,8 +1178,17 @@ public class RestClientTests
         }
     }
 
-    private sealed class TestRestClient(HttpClient client) : Clc.Rest.RestClient(client)
+    private sealed class TestRestClient : Clc.Rest.RestClient
     {
+        public TestRestClient()
+        {
+        }
+
+        public TestRestClient(HttpClient client) : base(client)
+        {
+        }
+
+        public HttpClient ExposedClient => Client;
     }
 
     private sealed class ReplacementHookRestClient(HttpClient client, HttpRequestMessage replacementRequest) : Clc.Rest.RestClient(client)
@@ -1147,7 +1205,7 @@ public class RestClientTests
     {
         private readonly HttpRequestMessage _replacementRequest = replacementRequest;
 
-        public HttpRequestMessage Authenticate(HttpClient client, HttpRequestMessage request) => _replacementRequest;
+        public HttpRequestMessage Authenticate(HttpRequestMessage request) => _replacementRequest;
     }
 
     private sealed class ReplacementParametersRestClient(HttpClient client, HttpRequestMessage replacementRequest) : Clc.Rest.RestClient(client)
@@ -1164,7 +1222,7 @@ public class RestClientTests
     {
         public bool WasCalled { get; private set; }
 
-        public HttpRequestMessage Authenticate(HttpClient client, HttpRequestMessage request)
+        public HttpRequestMessage Authenticate(HttpRequestMessage request)
         {
             WasCalled = true;
             return request;
@@ -1175,7 +1233,7 @@ public class RestClientTests
     {
         private readonly Exception _exception = exception;
 
-        public HttpRequestMessage Authenticate(HttpClient client, HttpRequestMessage request) => throw _exception;
+        public HttpRequestMessage Authenticate(HttpRequestMessage request) => throw _exception;
     }
 
     private sealed class TrackingSerializer : Clc.Rest.ISerializer
