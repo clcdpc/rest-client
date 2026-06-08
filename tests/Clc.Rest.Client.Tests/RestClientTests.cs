@@ -819,6 +819,29 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public void PreDeserialize_Returns_Input_String_Unchanged()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var input = "{\"key\":\"value\"}";
+        var result = client.PreDeserialize(input);
+
+        Assert.AreEqual(input, result);
+    }
+
+    [TestMethod]
+    public async Task FormatResponseAsync_Applies_PreDeserialize_To_Content()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{\"Name\":\"old\"}"));
+        var client = new PreDeserializeTestRestClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+
+        var response = await client.ExecuteAsync<Payload>(RestRequest.Get("/data"), TestContext.CancellationToken);
+
+        Assert.AreEqual("new", response.Data!.Name);
+    }
+
+    [TestMethod]
     [DataRow(true)]
     [DataRow(false)]
     public void ToString_Does_Not_Throw_When_Data_Or_Content_Is_Null(bool useRestResponse)
@@ -1131,6 +1154,14 @@ public class RestClientTests
 
     private sealed class TestRestClient(HttpClient client) : Clc.Rest.RestClient(client)
     {
+    }
+
+    private sealed class PreDeserializeTestRestClient(HttpClient client) : Clc.Rest.RestClient(client)
+    {
+        public override string PreDeserialize(string responseBody)
+        {
+            return responseBody.Replace("old", "new");
+        }
     }
 
     private sealed class ReplacementHookRestClient(HttpClient client, HttpRequestMessage replacementRequest) : Clc.Rest.RestClient(client)
