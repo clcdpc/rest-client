@@ -14,11 +14,10 @@ public class HeaderApiKeyAuthenticatorTests
         // Arrange
         const string apiKey = "my-secret-key";
         var authenticator = new HeaderApiKeyAuthenticator(apiKey);
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        var authenticatedRequest = authenticator.Authenticate(request);
 
         // Assert
         Assert.IsTrue(authenticatedRequest.Headers.Contains("apikey"));
@@ -32,11 +31,10 @@ public class HeaderApiKeyAuthenticatorTests
         const string apiKey = "my-secret-key";
         const string customHeaderName = "X-Api-Key";
         var authenticator = new HeaderApiKeyAuthenticator(apiKey, customHeaderName);
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        var authenticatedRequest = authenticator.Authenticate(request);
 
         // Assert
         Assert.IsTrue(authenticatedRequest.Headers.Contains(customHeaderName));
@@ -50,12 +48,11 @@ public class HeaderApiKeyAuthenticatorTests
         // Arrange
         const string apiKey = "my-new-secret-key";
         var authenticator = new HeaderApiKeyAuthenticator(apiKey);
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
         request.Headers.Add("apikey", "old-key");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        var authenticatedRequest = authenticator.Authenticate(request);
 
         // Assert
         var headerValues = authenticatedRequest.Headers.GetValues("apikey").ToArray();
@@ -68,13 +65,25 @@ public class HeaderApiKeyAuthenticatorTests
     {
         // Arrange
         var authenticator = new HeaderApiKeyAuthenticator("my-secret-key");
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        var authenticatedRequest = authenticator.Authenticate(request);
 
         // Assert
         Assert.AreSame(request, authenticatedRequest);
+    }
+
+    [TestMethod]
+    public void Authenticate_DoesNotMutateHttpClientDefaultRequestHeaders()
+    {
+        var authenticator = new HeaderApiKeyAuthenticator("my-secret-key", "X-Api-Key");
+        using var client = new HttpClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
+
+        var authenticatedRequest = authenticator.Authenticate(request);
+
+        Assert.IsFalse(client.DefaultRequestHeaders.Contains("X-Api-Key"));
+        Assert.IsTrue(authenticatedRequest.Headers.Contains("X-Api-Key"));
     }
 }

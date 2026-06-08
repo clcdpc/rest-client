@@ -16,11 +16,10 @@ public class HttpBasicAuthenticatorTests
         string username = "user_name_with_🚀";
         string password = "password_with_€";
         var authenticator = new HttpBasicAuthenticator(username, password);
-        using var client = new HttpClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        var authenticatedRequest = authenticator.Authenticate(request);
 
         // Assert
         Assert.IsNotNull(authenticatedRequest.Headers.Authorization);
@@ -37,11 +36,10 @@ public class HttpBasicAuthenticatorTests
         string username = "testuser";
         string password = "testpassword";
         var authenticator = new HttpBasicAuthenticator(username, password);
-        using var client = new HttpClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        var authenticatedRequest = authenticator.Authenticate(request);
 
         // Assert
         Assert.IsNotNull(authenticatedRequest.Headers.Authorization);
@@ -49,5 +47,18 @@ public class HttpBasicAuthenticatorTests
 
         string expectedParameter = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
         Assert.AreEqual(expectedParameter, authenticatedRequest.Headers.Authorization.Parameter);
+    }
+
+    [TestMethod]
+    public void Authenticate_DoesNotMutateHttpClientDefaultRequestHeaders()
+    {
+        var authenticator = new HttpBasicAuthenticator("testuser", "testpassword");
+        using var client = new HttpClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
+
+        var authenticatedRequest = authenticator.Authenticate(request);
+
+        Assert.IsFalse(client.DefaultRequestHeaders.Contains("Authorization"));
+        Assert.IsNotNull(authenticatedRequest.Headers.Authorization);
     }
 }

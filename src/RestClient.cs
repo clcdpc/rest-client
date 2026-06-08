@@ -23,38 +23,53 @@ namespace Clc.Rest
         public IAuthenticator? Authenticator { get; set; }
         public MediaTypeWithQualityHeaderValue Accept { get; set; } = new MediaTypeWithQualityHeaderValue("application/json");
 
-        private HttpClient? _client;
-        protected HttpClient Client
-        {
-            get
-            {
-                if (_client == null)
-                {
-                    var client = new HttpClient();
-                    if (Interlocked.CompareExchange(ref _client, client, null) != null)
-                    {
-                        client.Dispose();
-                    }
-                }
+        private static readonly HttpClient SharedClient = CreateSharedClient();
 
-                return _client!;
-            }
-        }
+        private readonly HttpClient _client;
+
+        /// <summary>
+        /// Gets the HTTP client used for request transport.
+        /// </summary>
+        /// <remarks>
+        /// When no client is supplied to the constructor, RestClient uses a shared
+        /// process-lifetime HttpClient. Derived classes must not mutate shared client
+        /// state such as DefaultRequestHeaders, BaseAddress, Timeout, or handler-related
+        /// behavior. Apply request-specific state to HttpRequestMessage instead.
+        /// When a client is supplied, the caller owns its lifetime.
+        /// </remarks>
+        protected HttpClient Client => _client;
 
         protected RestClient() : this(null, null) { }
         protected RestClient(string? baseUrl) : this(baseUrl, null) { }
         protected RestClient(HttpClient client) : this(null, client) { }
 
+        /// <summary>
+        /// Initializes a new RestClient instance.
+        /// </summary>
+        /// <remarks>
+        /// A null client uses the shared process-lifetime default client. A supplied client
+        /// is used as-is and remains owned by the caller. Derived classes must apply
+        /// request-specific state to HttpRequestMessage rather than mutating HttpClient.
+        /// </remarks>
         protected RestClient(string? baseUrl, HttpClient? client)
         {
             if (!string.IsNullOrEmpty(baseUrl?.Trim()))
             {
                 BaseUrl = baseUrl.Trim();
             }
-            if (client != null)
+
+            _client = client ?? SharedClient;
+        }
+
+        private static HttpClient CreateSharedClient()
+        {
+            var handler = new SocketsHttpHandler
             {
-                _client = client;
-            }
+                PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+                UseCookies = false
+            };
+
+            return new HttpClient(handler, disposeHandler: true);
         }
 
 
@@ -195,7 +210,7 @@ namespace Clc.Rest
             var authenticator = request.Authenticator ?? Authenticator;
             if (authenticator != null)
             {
-                httpRequest = authenticator.Authenticate(Client, httpRequest);
+                httpRequest = authenticator.Authenticate(httpRequest);
             }
 
             return httpRequest;

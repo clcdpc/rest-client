@@ -14,11 +14,10 @@ public class BearerTokenAuthenticatorTests
         // Arrange
         const string token = "test-token";
         var authenticator = new BearerTokenAuthenticator(token);
-        using var client = new HttpClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
-        authenticator.Authenticate(client, request);
+        authenticator.Authenticate(request);
 
         // Assert
         Assert.IsNotNull(request.Headers.Authorization);
@@ -32,7 +31,6 @@ public class BearerTokenAuthenticatorTests
         // Arrange
         const string token = "test-token";
         var authenticator = new BearerTokenAuthenticator(token);
-        using var client = new HttpClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com")
         {
             Headers =
@@ -42,7 +40,7 @@ public class BearerTokenAuthenticatorTests
         };
 
         // Act
-        authenticator.Authenticate(client, request);
+        authenticator.Authenticate(request);
 
         // Assert
         Assert.IsNotNull(request.Headers.Authorization);
@@ -55,13 +53,25 @@ public class BearerTokenAuthenticatorTests
     {
         // Arrange
         var authenticator = new BearerTokenAuthenticator("test-token");
-        using var client = new HttpClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        var authenticatedRequest = authenticator.Authenticate(request);
 
         // Assert
         Assert.AreSame(request, authenticatedRequest);
+    }
+
+    [TestMethod]
+    public void Authenticate_DoesNotMutateHttpClientDefaultRequestHeaders()
+    {
+        var authenticator = new BearerTokenAuthenticator("test-token");
+        using var client = new HttpClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
+
+        authenticator.Authenticate(request);
+
+        Assert.IsFalse(client.DefaultRequestHeaders.Contains("Authorization"));
+        Assert.IsNotNull(request.Headers.Authorization);
     }
 }

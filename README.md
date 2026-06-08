@@ -6,6 +6,32 @@ A simple library for making REST requests.
 
 `Clc.Rest.Client` v3 alpha targets **.NET 8 (`net8.0`) only**. Consumers must run on .NET 8 or newer.
 
+
+## HttpClient lifetime
+
+RestClient manages HTTP transport by default. If no `HttpClient` is supplied,
+RestClient uses a shared process-lifetime `HttpClient` configured for stateless
+REST calls. Consumers do not need to dispose a RestClient instance only to clean
+up the default client.
+
+Applications that need custom transport behavior can inject an `HttpClient`:
+
+```csharp
+services.AddHttpClient<MyApiClient>();
+```
+
+Injected `HttpClient` instances are caller-owned. RestClient will use them but
+will not dispose them.
+
+Request-specific state such as authorization, API keys, Accept headers, custom
+headers, and content should be configured per request. Do not mutate
+`HttpClient.DefaultRequestHeaders`, `BaseAddress`, or `Timeout` from derived
+clients when using the default shared client.
+
+If an application needs cookies, a proxy, custom certificates, custom TLS
+configuration, handlers, timeout policies, resilience handlers, or diagnostics
+configured on the transport, inject an appropriately configured `HttpClient`.
+
 ## 3.0.0-alpha.1 breaking changes
 
 This prerelease remains on the **alpha** line and introduces a .NET 8+ requirement.
@@ -33,7 +59,7 @@ Behavior:
 - `Body` is serialized using `request.Serializer ?? client.Serializer`.
 - `Content` bypasses serialization and is used directly.
 - `PostForm` is a convenience for `application/x-www-form-urlencoded` content.
-- For headers, serializer, authenticator, or request-specific formatting, configure the returned `RestRequest` before calling `ExecuteAsync`.
+- For headers, serializer, authenticator, or request-specific formatting, configure the returned `RestRequest` before calling `ExecuteAsync`. Built-in authenticators apply authentication to the outgoing `HttpRequestMessage` and do not mutate `HttpClient.DefaultRequestHeaders`.
 
 ```csharp
 var request = RestRequest.Get("/items", new Dictionary<string, object>
@@ -60,4 +86,5 @@ Removed in this alpha:
 - async verb helpers (`GetAsync`, `PostAsync`, `PutAsync`, `PatchAsync`, `DeleteAsync`)
 - legacy `FormatResponse<T>(HttpResponseMessage)` override path
 - old `IRestRequest.FormatOutput(HttpResponseMessage)` delegate
+- the old `IAuthenticator.Authenticate(HttpClient, HttpRequestMessage)` signature (authenticators now receive only the per-request `HttpRequestMessage`)
 - synchronous `Execute<T>(RestRequest)` wrapper
