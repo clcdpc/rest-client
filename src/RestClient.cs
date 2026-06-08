@@ -94,13 +94,7 @@ namespace Clc.Rest
                 request = PreformatRestRequest(request ?? throw new ArgumentNullException(nameof(request)));
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var httpRequest = new HttpRequestMessage(request.Method, BuildRequestUri(request));
-                httpRequest.Headers.Accept.Add(Accept);
-
-                httpRequest = AddHeaders(request, httpRequest);
-                httpRequest = AddAuthenticator(request, httpRequest);
-                httpRequest = AddBody(request, httpRequest);
-                httpRequest = AddParameters(request, httpRequest);
+                var httpRequest = BuildHttpRequestMessage(request);
 
                 response.Request = httpRequest;
 
@@ -116,14 +110,7 @@ namespace Clc.Rest
                     : await ReadContentAsStringAsync(httpResponse.Content, cancellationToken).ConfigureAwait(false);
                 response.Response = new HttpResponse(httpResponse, responseContent);
 
-                if (request.FormatOutputAsync != null)
-                {
-                    response.Data = (T?)await request.FormatOutputAsync(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    response.Data = await FormatResponseAsync<T>(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
-                }
+                response.Data = await GetResponseDataAsync<T>(request, httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -131,6 +118,29 @@ namespace Clc.Rest
             }
 
             return response;
+        }
+
+        private HttpRequestMessage BuildHttpRequestMessage(RestRequest request)
+        {
+            var httpRequest = new HttpRequestMessage(request.Method, BuildRequestUri(request));
+            httpRequest.Headers.Accept.Add(Accept);
+
+            httpRequest = AddHeaders(request, httpRequest);
+            httpRequest = AddAuthenticator(request, httpRequest);
+            httpRequest = AddBody(request, httpRequest);
+            httpRequest = AddParameters(request, httpRequest);
+
+            return httpRequest;
+        }
+
+        private async Task<T?> GetResponseDataAsync<T>(RestRequest request, HttpResponseMessage httpResponse, string? responseContent, CancellationToken cancellationToken)
+        {
+            if (request.FormatOutputAsync != null)
+            {
+                return (T?)await request.FormatOutputAsync(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
+            }
+
+            return await FormatResponseAsync<T>(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
         }
 
 
