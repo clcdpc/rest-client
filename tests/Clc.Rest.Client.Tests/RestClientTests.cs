@@ -68,6 +68,18 @@ public class RestClientTests
     }
 
     [TestMethod]
+    public void PreformatRestRequest_DefaultBehavior_ReturnsPassedRequest()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        var request = new RestRequest();
+
+        var preformattedRequest = client.PreformatRestRequest(request);
+
+        Assert.AreSame(request, preformattedRequest);
+    }
+
+    [TestMethod]
     public async Task ExecuteAsync_Default_RestRequest_Does_Not_Throw_NullReferenceException()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
