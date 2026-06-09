@@ -32,6 +32,46 @@ proxy, custom certificates, custom TLS configuration, handlers, timeout policies
 resilience handlers, or diagnostics requires injecting an appropriately
 configured `HttpClient`.
 
+
+## Diagnostic body capture
+
+`ExecuteAsync<T>` is intended for JSON/text REST APIs with reasonably sized bodies.
+It reads response content as text for formatting and deserialization. Diagnostic
+request and response body strings are controlled by the client-level
+`RestClient.Diagnostics` options so callers do not need to pass diagnostics
+settings to each request.
+
+By default:
+
+- `RestRequest.Body` values serialized by the library are captured in
+  `IRestResponse.BodyString`.
+- Explicit `RestRequest.Content` / `HttpContent` is **not** captured in
+  `IRestResponse.BodyString`.
+- Response content is captured in `IRestResponse.Response.Content`.
+
+Available options:
+
+- `CaptureSerializedRequestBody` controls diagnostic capture of serialized
+  `RestRequest.Body` content.
+- `CaptureExplicitRequestContent` controls diagnostic capture of explicit
+  caller-supplied `HttpContent`. Enable this only intentionally because explicit
+  content can contain credentials, token grant forms, PII, binary data, or
+  stream/custom content.
+- `CaptureResponseContent` controls whether the already-read response text is
+  stored on `HttpResponse.Content`. If this is false, response content is still
+  read internally for `ExecuteAsync<T>` formatting and deserialization; it is
+  just not stored on `HttpResponse.Content`.
+- `MaxCapturedContentLength` limits only stored diagnostic strings such as
+  `IRestResponse.BodyString` and `IRestResponse.Response.Content`. It does not
+  truncate the actual request sent or the full response string used internally
+  for formatting/deserialization.
+
+```csharp
+var client = new MyApiClient(httpClient);
+client.Diagnostics.CaptureExplicitRequestContent = true;
+client.Diagnostics.MaxCapturedContentLength = 20_000;
+```
+
 ## Current beta breaking changes
 
 This beta release continues the v3 API work and may still include breaking changes while the library is being finalized.

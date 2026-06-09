@@ -23,6 +23,13 @@ namespace Clc.Rest
         public IAuthenticator? Authenticator { get; set; }
         public MediaTypeWithQualityHeaderValue Accept { get; set; } = new MediaTypeWithQualityHeaderValue("application/json");
 
+        /// <summary>
+        /// Configures diagnostic request and response body capture evaluated by ExecuteAsync.
+        /// These options do not affect the actual request or response transport content, and
+        /// MaxCapturedContentLength only limits stored diagnostic strings.
+        /// </summary>
+        public RestClientDiagnosticsOptions Diagnostics { get; } = new();
+
         private static readonly HttpClient SharedClient = CreateSharedClient();
 
         private readonly HttpClient _client;
@@ -106,9 +113,10 @@ namespace Clc.Rest
 
                 response.Request = httpRequest;
 
-                response.BodyString = httpRequest.Content == null
-                    ? null
-                    : await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false);
+                response.BodyString = await CaptureRequestBodyStringAsync(
+                    request,
+                    httpRequest,
+                    cancellationToken).ConfigureAwait(false);
 
                 var sw = Stopwatch.StartNew();
                 using var httpResponse = await SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
@@ -116,7 +124,11 @@ namespace Clc.Rest
                 var responseContent = httpResponse.Content == null
                     ? null
                     : await ReadContentAsStringAsync(httpResponse.Content, cancellationToken).ConfigureAwait(false);
-                response.Response = new HttpResponse(httpResponse, responseContent);
+
+                var capturedResponseContent = Diagnostics.CaptureResponseContent
+                    ? CaptureContentString(responseContent)
+                    : null;
+                response.Response = new HttpResponse(httpResponse, capturedResponseContent);
 
                 if (request.FormatOutputAsync != null)
                 {
@@ -133,6 +145,66 @@ namespace Clc.Rest
             }
 
             return response;
+        }
+
+        private async Task<string?> CaptureRequestBodyStringAsync(
+            RestRequest request,
+            HttpRequestMessage httpRequest,
+            CancellationToken cancellationToken)
+        {
+            if (httpRequest.Content == null)
+            {
+                return null;
+            }
+
+            if (request.Content != null)
+            {
+                return Diagnostics.CaptureExplicitRequestContent
+                    ? CaptureContentString(await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false))
+                    : null;
+            }
+
+            if (request.Body != null)
+            {
+                return Diagnostics.CaptureSerializedRequestBody
+                    ? CaptureContentString(await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false))
+                    : null;
+            }
+
+            return Diagnostics.CaptureExplicitRequestContent
+                ? CaptureContentString(await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false))
+                : null;
+        }
+
+        private string? CaptureContentString(string? content)
+        {
+            if (content == null)
+            {
+                return null;
+            }
+
+            var maxLength = Diagnostics.MaxCapturedContentLength;
+            if (maxLength == null)
+            {
+                return content;
+            }
+
+            if (maxLength < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(Diagnostics.MaxCapturedContentLength),
+                    Diagnostics.MaxCapturedContentLength,
+                    "MaxCapturedContentLength cannot be negative.");
+            }
+
+            if (maxLength == 0)
+            {
+                return string.Empty;
+            }
+
+            return content.Length <= maxLength
+                ? content
+                : content[..maxLength.Value];
         }
 
 

@@ -623,14 +623,144 @@ public class RestClientTests
     }
 
     [TestMethod]
-    public async Task ExecuteAsync_Request_BodyString_Is_Captured()
+    public async Task ExecuteAsync_Serialized_Request_BodyString_Is_Captured_By_Default()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Post, "/post", body: new { Name = "Alice" }), TestContext.CancellationToken);
+        var response = await client.ExecuteAsync<string>(RestRequest.Post("/post", new { Name = "Alice" }), TestContext.CancellationToken);
 
+        Assert.IsNull(response.Exception);
         Assert.AreEqual("{\"Name\":\"Alice\"}", response.BodyString);
+        Assert.AreEqual("{\"Name\":\"Alice\"}", await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken));
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Explicit_Request_Content_Is_Not_Captured_By_Default()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        var request = RestRequest.WithContent(HttpMethod.Post, "/token", new StringContent("secret=value", Encoding.UTF8, "text/plain"));
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.IsNull(response.BodyString);
+        Assert.AreEqual("secret=value", await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken));
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Response_Content_Is_Captured_By_Default()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{\"Name\":\"Alice\"}"));
+        var client = CreateClient(handler);
+
+        var response = await client.ExecuteAsync<Payload>(RestRequest.Get("/data"), TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.IsNotNull(response.Response);
+        Assert.AreEqual("{\"Name\":\"Alice\"}", response.Response.Content);
+        Assert.AreEqual("Alice", response.Data!.Name);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Explicit_Request_Content_Is_Captured_When_Enabled()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        client.Diagnostics.CaptureExplicitRequestContent = true;
+        var request = RestRequest.WithContent(HttpMethod.Post, "/token", new StringContent("secret=value", Encoding.UTF8, "text/plain"));
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("secret=value", response.BodyString);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Serialized_Request_Body_Capture_Can_Be_Disabled()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        client.Diagnostics.CaptureSerializedRequestBody = false;
+
+        var response = await client.ExecuteAsync<string>(RestRequest.Post("/post", new { Name = "Alice" }), TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.IsNull(response.BodyString);
+        Assert.AreEqual("{\"Name\":\"Alice\"}", await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken));
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Response_Content_Capture_Can_Be_Disabled_Without_Breaking_Deserialization()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("abcdefghijklmnopqrstuvwxyz"));
+        var client = CreateClient(handler);
+        client.Diagnostics.CaptureResponseContent = false;
+
+        var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.IsNull(response.Response!.Content);
+        Assert.AreEqual("abcdefghijklmnopqrstuvwxyz", response.Data);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_MaxCapturedContentLength_Truncates_Request_BodyString_Without_Truncating_Sent_Content()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        client.Diagnostics.MaxCapturedContentLength = 5;
+
+        var response = await client.ExecuteAsync<string>(RestRequest.Post("/post", new { Name = "Alice" }), TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("{\"Nam", response.BodyString);
+        Assert.IsTrue(response.BodyString!.Length <= 5);
+        Assert.AreEqual("{\"Name\":\"Alice\"}", await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken));
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_MaxCapturedContentLength_Truncates_Response_Content_But_Not_Data()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("abcdefghijklmnopqrstuvwxyz"));
+        var client = CreateClient(handler);
+        client.Diagnostics.MaxCapturedContentLength = 5;
+
+        var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("abcde", response.Response!.Content);
+        Assert.AreEqual("abcdefghijklmnopqrstuvwxyz", response.Data);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_MaxCapturedContentLength_Zero_Captures_Empty_Strings_When_Content_Exists()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("response-body"));
+        var client = CreateClient(handler);
+        client.Diagnostics.MaxCapturedContentLength = 0;
+
+        var response = await client.ExecuteAsync<string>(RestRequest.Post("/post", new { Name = "Alice" }), TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual(string.Empty, response.BodyString);
+        Assert.AreEqual(string.Empty, response.Response!.Content);
+        Assert.AreEqual("response-body", response.Data);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Negative_MaxCapturedContentLength_Captures_Exception()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        client.Diagnostics.MaxCapturedContentLength = -1;
+
+        var response = await client.ExecuteAsync<string>(RestRequest.Post("/post", new { Name = "Alice" }), TestContext.CancellationToken);
+
+        Assert.IsNotNull(response.Exception);
+        Assert.IsInstanceOfType<ArgumentOutOfRangeException>(response.Exception);
+        Assert.Contains("MaxCapturedContentLength", response.Exception.Message);
     }
 
     [TestMethod]
