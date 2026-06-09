@@ -13,12 +13,12 @@ namespace Clc.Rest.Models
         /// <summary>
         /// The raw response from the PAPI service
         /// </summary>
-        public HttpResponse? Response { get; set; } = new HttpResponse();
+        public HttpResponse? Response { get; set; }
 
         /// <summary>
         /// The request that was sent to the PAPI service
         /// </summary>
-        public HttpRequestMessage? Request { get; set; } = new HttpRequestMessage();
+        public HttpRequestMessage? Request { get; set; }
         public string? BodyString { get; set; }
 
         public Exception? Exception { get; set; }
