@@ -13,11 +13,10 @@ namespace Clc.Rest.Auth
             HeaderName = headerName;
         }
 
-        public HttpRequestMessage Authenticate(HttpRequestMessage request)
+        public void Authenticate(HttpRequestMessage request)
         {
             if (request.Headers.Contains(HeaderName)) { request.Headers.Remove(HeaderName); }
             request.Headers.Add(HeaderName, ApiKey);
-            return request;
         }
     }
 }

@@ -16,11 +16,10 @@ namespace Clc.Rest.Auth
             Password = password;
         }
 
-        public HttpRequestMessage Authenticate(HttpRequestMessage request)
+        public void Authenticate(HttpRequestMessage request)
         {
             var byteArray = Encoding.UTF8.GetBytes($"{Username}:{Password}");
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
-            return request;
         }
     }
 }

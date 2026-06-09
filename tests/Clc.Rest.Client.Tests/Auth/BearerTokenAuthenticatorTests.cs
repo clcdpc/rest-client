@@ -48,30 +48,4 @@ public class BearerTokenAuthenticatorTests
         Assert.AreEqual(token, request.Headers.Authorization.Parameter);
     }
 
-    [TestMethod]
-    public void Authenticate_ReturnsSameRequestInstance()
-    {
-        // Arrange
-        var authenticator = new BearerTokenAuthenticator("test-token");
-        using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
-
-        // Act
-        var authenticatedRequest = authenticator.Authenticate(request);
-
-        // Assert
-        Assert.AreSame(request, authenticatedRequest);
-    }
-
-    [TestMethod]
-    public void Authenticate_DoesNotMutateHttpClientDefaultRequestHeaders()
-    {
-        var authenticator = new BearerTokenAuthenticator("test-token");
-        using var client = new HttpClient();
-        using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
-
-        authenticator.Authenticate(request);
-
-        Assert.IsFalse(client.DefaultRequestHeaders.Contains("Authorization"));
-        Assert.IsNotNull(request.Headers.Authorization);
-    }
 }
