@@ -12,10 +12,9 @@ namespace Clc.Rest.Auth
             Token = token;
         }
 
-        public HttpRequestMessage Authenticate(HttpRequestMessage request)
+        public void Authenticate(HttpRequestMessage request)
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", $"{Token}");
-            return request;
         }
     }
 }

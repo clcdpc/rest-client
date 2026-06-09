@@ -9,10 +9,10 @@ A simple library for making REST requests.
 
 ## HttpClient lifetime
 
-RestClient manages HTTP transport by default. If no `HttpClient` is supplied,
-RestClient uses a shared process-lifetime `HttpClient` configured for stateless
-REST calls. Consumers do not need to dispose a RestClient instance only to clean
-up the default client.
+RestClient manages default HTTP transport internally. If no `HttpClient` is
+supplied, RestClient uses a shared process-lifetime `HttpClient` configured for
+stateless REST calls. Consumers do not need to dispose a RestClient instance only
+to clean up the default client.
 
 Applications that need custom transport behavior can inject an `HttpClient`:
 
@@ -21,16 +21,15 @@ services.AddHttpClient<MyApiClient>();
 ```
 
 Injected `HttpClient` instances are caller-owned. RestClient will use them but
-will not dispose them.
+will not dispose them. Derived clients cannot access the internally managed
+default `HttpClient`.
 
 Request-specific state such as authorization, API keys, Accept headers, custom
-headers, and content should be configured per request. Do not mutate
-`HttpClient.DefaultRequestHeaders`, `BaseAddress`, or `Timeout` from derived
-clients when using the default shared client.
-
-If an application needs cookies, a proxy, custom certificates, custom TLS
-configuration, handlers, timeout policies, resilience handlers, or diagnostics
-configured on the transport, inject an appropriately configured `HttpClient`.
+headers, and content should be configured on `RestRequest` or through protected
+`HttpRequestMessage` hooks. Transport-level customization such as cookies, a
+proxy, custom certificates, custom TLS configuration, handlers, timeout policies,
+resilience handlers, or diagnostics requires injecting an appropriately
+configured `HttpClient`.
 
 ## 3.0.0-alpha.1 breaking changes
 
@@ -79,12 +78,17 @@ var formRequest = RestRequest.PostForm("/token", formValues);
 await client.ExecuteAsync<TokenDto>(formRequest, token);
 ```
 
-Removed in this alpha:
+Removed or changed in this alpha:
 
 - URL-only and method/url `ExecuteAsync` convenience overloads (use `RestRequest` factories)
 - context-dependent `Parameters` behavior (replaced by `QueryParameters` plus explicit `Content`/`PostForm`)
 - async verb helpers (`GetAsync`, `PostAsync`, `PutAsync`, `PatchAsync`, `DeleteAsync`)
 - legacy `FormatResponse<T>(HttpResponseMessage)` override path
 - old `IRestRequest.FormatOutput(HttpResponseMessage)` delegate
-- the old `IAuthenticator.Authenticate(HttpClient, HttpRequestMessage)` signature (authenticators now receive only the per-request `HttpRequestMessage`)
+- the old `IAuthenticator.Authenticate(HttpClient, HttpRequestMessage)` signature
+- `IAuthenticator.Authenticate(HttpRequestMessage)` now returns `void` and mutates the supplied `HttpRequestMessage`
+- protected `Client` access from `RestClient`
+- request-building hooks that return replacement `HttpRequestMessage` instances; hooks are mutate-only
+- unsupported request-message replacement from authenticators or request-building hooks
+- `CreateHttpRequestMessage` and `SendAsync` are the supported protected extension points
 - synchronous `Execute<T>(RestRequest)` wrapper
