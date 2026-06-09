@@ -409,4 +409,21 @@ public class RestClientRequestUriTests
         Assert.DoesNotContain("empty=", uri);
         Assert.DoesNotContain("whitespace=", uri);
     }
+
+    [TestMethod]
+    [DataRow("https://api.example.com/", "/", "/items", "https://api.example.com/items")]
+    [DataRow("https://api.example.com//", "///", "///items", "https://api.example.com/items")]
+    [DataRow("https://api.example.com/", "/v1/", "/items", "https://api.example.com/v1/items")]
+    [DataRow("https://api.example.com", "v1", "items", "https://api.example.com/v1/items")]
+    public void BuildUrl_Normalizes_Slashes_Between_Url_Segments(string baseUrl, string pathPrefix, string path, string expected)
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        client.BaseUrl = baseUrl;
+        client.PathPrefix = pathPrefix;
+
+        var result = client.BuildUrl(new RestRequest(HttpMethod.Get, path));
+
+        Assert.AreEqual(expected, result);
+    }
 }

@@ -226,7 +226,14 @@ namespace Clc.Rest
                 return path;
             }
 
-            return $"{(BaseUrl?.Length > 0 ? BaseUrl.TrimEnd('/') + "/" : "")}{(!string.IsNullOrWhiteSpace(PathPrefix) ? PathPrefix.Trim('/') + "/" : "")}{path.TrimStart('/')}";
+            var segments = new[]
+            {
+                BaseUrl?.TrimEnd('/'),
+                PathPrefix?.Trim('/'),
+                path.TrimStart('/')
+            };
+
+            return string.Join("/", segments.Where(segment => !string.IsNullOrWhiteSpace(segment)));
         }
 
         public virtual Uri BuildRequestUri(RestRequest request)
