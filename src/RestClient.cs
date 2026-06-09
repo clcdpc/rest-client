@@ -226,21 +226,14 @@ namespace Clc.Rest
                 return path;
             }
 
-            var builder = new StringBuilder();
-
-            if (!string.IsNullOrEmpty(BaseUrl))
+            var segments = new[]
             {
-                builder.Append(BaseUrl.TrimEnd('/')).Append('/');
-            }
+                BaseUrl?.TrimEnd('/'),
+                PathPrefix?.Trim('/'),
+                path.TrimStart('/')
+            };
 
-            if (!string.IsNullOrWhiteSpace(PathPrefix))
-            {
-                builder.Append(PathPrefix.Trim('/')).Append('/');
-            }
-
-            builder.Append(path.TrimStart('/'));
-
-            return builder.ToString();
+            return string.Join("/", segments.Where(segment => !string.IsNullOrWhiteSpace(segment)));
         }
 
         public virtual Uri BuildRequestUri(RestRequest request)
