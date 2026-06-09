@@ -108,13 +108,12 @@ namespace Clc.Rest
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var httpRequest = CreateHttpRequestMessage(request);
+                response.Request = httpRequest;
 
                 AddHeaders(request, httpRequest);
-                AddAuthenticator(request, httpRequest);
                 AddBody(request, httpRequest);
                 AddParameters(request, httpRequest);
-
-                response.Request = httpRequest;
+                AddAuthenticator(request, httpRequest);
 
                 response.BodyString = await CaptureRequestBodyStringAsync(
                     request,
@@ -140,6 +139,10 @@ namespace Clc.Rest
                 {
                     response.Data = await FormatResponseAsync<T>(httpResponse, responseContent, cancellationToken).ConfigureAwait(false);
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
