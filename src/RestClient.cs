@@ -27,18 +27,6 @@ namespace Clc.Rest
 
         private readonly HttpClient _client;
 
-        /// <summary>
-        /// Gets the HTTP client used for request transport.
-        /// </summary>
-        /// <remarks>
-        /// When no client is supplied to the constructor, RestClient uses a shared
-        /// process-lifetime HttpClient. Derived classes must not mutate shared client
-        /// state such as DefaultRequestHeaders, BaseAddress, Timeout, or handler-related
-        /// behavior. Apply request-specific state to HttpRequestMessage instead.
-        /// When a client is supplied, the caller owns its lifetime.
-        /// </remarks>
-        protected HttpClient Client => _client;
-
         protected RestClient() : this(null, null) { }
         protected RestClient(string? baseUrl) : this(baseUrl, null) { }
         protected RestClient(HttpClient client) : this(null, client) { }
@@ -109,13 +97,12 @@ namespace Clc.Rest
                 request = PreformatRestRequest(request ?? throw new ArgumentNullException(nameof(request)));
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var httpRequest = new HttpRequestMessage(request.Method, BuildRequestUri(request));
-                httpRequest.Headers.Accept.Add(Accept);
+                var httpRequest = CreateHttpRequestMessage(request);
 
-                httpRequest = AddHeaders(request, httpRequest);
-                httpRequest = AddAuthenticator(request, httpRequest);
-                httpRequest = AddBody(request, httpRequest);
-                httpRequest = AddParameters(request, httpRequest);
+                AddHeaders(request, httpRequest);
+                AddAuthenticator(request, httpRequest);
+                AddBody(request, httpRequest);
+                AddParameters(request, httpRequest);
 
                 response.Request = httpRequest;
 
@@ -124,7 +111,7 @@ namespace Clc.Rest
                     : await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false);
 
                 var sw = Stopwatch.StartNew();
-                using var httpResponse = await Client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+                using var httpResponse = await SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
                 response.ResponseTime = sw.ElapsedMilliseconds;
                 var responseContent = httpResponse.Content == null
                     ? null
@@ -178,12 +165,52 @@ namespace Clc.Rest
                 : AppendQueryString(requestUri, queryString);
         }
 
-        protected virtual HttpRequestMessage AddBody(RestRequest request, HttpRequestMessage httpRequest)
+        /// <summary>
+        /// Creates the outgoing HTTP request message for a REST request.
+        /// </summary>
+        /// <remarks>
+        /// When no HttpClient is supplied to the constructor, RestClient uses an internally
+        /// managed shared process-lifetime default transport that derived classes cannot
+        /// access or dispose. Supplied HttpClient instances are used as-is and remain
+        /// caller-owned. Derived classes should customize per-request behavior through
+        /// RestRequest and HttpRequestMessage hooks such as this method, AddHeaders,
+        /// AddAuthenticator, AddBody, and AddParameters. Transport-level behavior such as
+        /// cookies, proxy, TLS, handlers, diagnostics, timeout policy, and other HttpClient
+        /// or handler settings requires injecting a configured HttpClient.
+        /// </remarks>
+        protected virtual HttpRequestMessage CreateHttpRequestMessage(RestRequest request)
+        {
+            var httpRequest = new HttpRequestMessage(request.Method, BuildRequestUri(request));
+            httpRequest.Headers.Accept.Add(Accept);
+            return httpRequest;
+        }
+
+        /// <summary>
+        /// Sends the outgoing HTTP request message.
+        /// </summary>
+        /// <remarks>
+        /// When no HttpClient is supplied to the constructor, this method uses an internally
+        /// managed shared process-lifetime default transport that derived classes cannot
+        /// access or dispose. Supplied HttpClient instances are used as-is and remain
+        /// caller-owned. Derived classes should use HttpRequestMessage hooks for
+        /// per-request customization. Transport-level behavior such as cookies, proxy, TLS,
+        /// handlers, diagnostics, timeout policy, and other HttpClient or handler settings
+        /// requires injecting a configured HttpClient. Override this method only when the
+        /// send operation itself is the intended extension point.
+        /// </remarks>
+        protected virtual Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            return _client.SendAsync(request, cancellationToken);
+        }
+
+        protected virtual void AddBody(RestRequest request, HttpRequestMessage httpRequest)
         {
             if (request.Content != null)
             {
                 httpRequest.Content = request.Content;
-                return httpRequest;
+                return;
             }
 
             if (request.Body != null)
@@ -191,37 +218,28 @@ namespace Clc.Rest
                 var serializer = request.Serializer ?? Serializer;
                 httpRequest.Content = new StringContent(serializer.Serialize(request.Body), Encoding.UTF8, serializer.MediaType);
             }
-
-            return httpRequest;
         }
 
-        protected virtual HttpRequestMessage AddHeaders(RestRequest request, HttpRequestMessage httpRequest)
+        protected virtual void AddHeaders(RestRequest request, HttpRequestMessage httpRequest)
         {
             foreach (var header in request.Headers)
             {
                 httpRequest.Headers.Add(header.Key, header.Value);
             }
-
-            return httpRequest;
         }
 
-        protected virtual HttpRequestMessage AddAuthenticator(RestRequest request, HttpRequestMessage httpRequest)
+        protected virtual void AddAuthenticator(RestRequest request, HttpRequestMessage httpRequest)
         {
             var authenticator = request.Authenticator ?? Authenticator;
-            if (authenticator != null)
-            {
-                httpRequest = authenticator.Authenticate(httpRequest);
-            }
-
-            return httpRequest;
+            authenticator?.Authenticate(httpRequest);
         }
 
-        protected virtual HttpRequestMessage AddParameters(RestRequest request, HttpRequestMessage httpRequest)
+        protected virtual void AddParameters(RestRequest request, HttpRequestMessage httpRequest)
         {
             var queryString = BuildQueryString(request);
             if (string.IsNullOrEmpty(queryString))
             {
-                return httpRequest;
+                return;
             }
 
             if (httpRequest.RequestUri == null)
@@ -237,8 +255,6 @@ namespace Clc.Rest
                     ? finalRequestUri
                     : AppendQueryString(httpRequest.RequestUri, queryString);
             }
-
-            return httpRequest;
         }
 
         private static string BuildQueryString(RestRequest request)

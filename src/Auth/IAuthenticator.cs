@@ -8,9 +8,10 @@ namespace Clc.Rest.Auth
         /// Applies authentication state to the outgoing request.
         /// </summary>
         /// <remarks>
-        /// Implementations must mutate only the supplied HttpRequestMessage. Do not mutate
-        /// HttpClient state such as DefaultRequestHeaders, BaseAddress, Timeout, or handler behavior.
+        /// Implementations must mutate only the supplied HttpRequestMessage and must not
+        /// replace the request. Implementations must not mutate HttpClient state such as
+        /// DefaultRequestHeaders, BaseAddress, Timeout, or handler behavior.
         /// </remarks>
-        HttpRequestMessage Authenticate(HttpRequestMessage request);
+        void Authenticate(HttpRequestMessage request);
     }
 }
