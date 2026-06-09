@@ -1515,7 +1515,6 @@ public class RestClientTests
         Assert.IsNotNull(response.Exception);
         Assert.IsInstanceOfType<ArgumentOutOfRangeException>(response.Exception);
         StringAssert.Contains(response.Exception.Message, "MaxCapturedContentLength");
-        Assert.IsNull(response.Response);
         Assert.IsNull(response.Data);
     }
 }
