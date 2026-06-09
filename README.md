@@ -56,14 +56,23 @@ Capture behavior is configured once per client with `RestClient.Diagnostics`:
 - `MaxCapturedContentLength` limits stored diagnostic request/response strings by
   character count.
 
+Any captured body string may contain sensitive application data. Avoid logging
+captured body strings broadly, and consider disabling or truncating capture for
+production clients.
+
 Enable `CaptureExplicitRequestContent` only intentionally because explicit
 `HttpContent` can contain credentials, token grant forms, PII, binary data, or
-stream/custom content. `MaxCapturedContentLength` limits only stored diagnostic
-strings returned to callers; it does not truncate the actual request content sent
-or the full response string used internally for formatting/deserialization. If
-`CaptureResponseContent` is false, response content is still read internally for
-`ExecuteAsync<T>` formatting/deserialization; it is just not stored on
-`HttpResponse.Content`.
+stream/custom content. When `CaptureExplicitRequestContent` is enabled, explicit
+`HttpContent` is read before the request is sent. Use it only with content that
+is safe to buffer/read for diagnostics.
+
+`MaxCapturedContentLength` limits only stored diagnostic strings returned to
+callers; it does not truncate the actual request content sent or the full
+response string used internally for formatting/deserialization.
+`MaxCapturedContentLength` is not a streaming or read-size limit; content is read
+before the stored diagnostic string is truncated. If `CaptureResponseContent` is
+false, response content is still read internally for `ExecuteAsync<T>`
+formatting/deserialization; it is just not stored on `HttpResponse.Content`.
 
 ```csharp
 var client = new MyApiClient(httpClient);

@@ -1501,4 +1501,21 @@ public class RestClientTests
             return true;
         }
     }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Negative_MaxCapturedContentLength_Captures_Exception_When_Response_Content_Is_Captured()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("response-body"));
+        var client = CreateClient(handler);
+        client.Diagnostics.MaxCapturedContentLength = -1;
+
+        var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
+
+        Assert.IsNotNull(handler.LastRequest);
+        Assert.IsNotNull(response.Exception);
+        Assert.IsInstanceOfType<ArgumentOutOfRangeException>(response.Exception);
+        StringAssert.Contains(response.Exception.Message, "MaxCapturedContentLength");
+        Assert.IsNull(response.Response);
+        Assert.IsNull(response.Data);
+    }
 }

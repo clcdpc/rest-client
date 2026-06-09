@@ -150,33 +150,34 @@ namespace Clc.Rest
         }
 
 
-        private async Task<string?> CaptureRequestBodyStringAsync(
-            RestRequest request,
-            HttpRequestMessage httpRequest,
-            CancellationToken cancellationToken)
+        private async Task<string?> CaptureRequestBodyStringAsync(RestRequest request, HttpRequestMessage httpRequest, CancellationToken cancellationToken)
         {
-            if (httpRequest.Content == null)
+            if (httpRequest.Content == null || !ShouldCaptureRequestBodyString(request))
             {
                 return null;
             }
 
+            var content = await ReadContentAsStringAsync(
+                httpRequest.Content,
+                cancellationToken).ConfigureAwait(false);
+
+            return CaptureContentString(content);
+        }
+
+        private bool ShouldCaptureRequestBodyString(RestRequest request)
+        {
             if (request.Content != null)
             {
-                return Diagnostics.CaptureExplicitRequestContent
-                    ? CaptureContentString(await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false))
-                    : null;
+                return Diagnostics.CaptureExplicitRequestContent;
             }
 
             if (request.Body != null)
             {
-                return Diagnostics.CaptureSerializedRequestBody
-                    ? CaptureContentString(await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false))
-                    : null;
+                return Diagnostics.CaptureSerializedRequestBody;
             }
 
-            return Diagnostics.CaptureExplicitRequestContent
-                ? CaptureContentString(await ReadContentAsStringAsync(httpRequest.Content, cancellationToken).ConfigureAwait(false))
-                : null;
+            // Content added by an AddBody override is treated like explicit/custom content.
+            return Diagnostics.CaptureExplicitRequestContent;
         }
 
         private string? CaptureContentString(string? content)
