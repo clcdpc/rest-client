@@ -32,6 +32,45 @@ proxy, custom certificates, custom TLS configuration, handlers, timeout policies
 resilience handlers, or diagnostics requires injecting an appropriately
 configured `HttpClient`.
 
+## Diagnostic body capture
+
+`ExecuteAsync<T>` is intended for JSON/text REST APIs with reasonably sized
+bodies. It reads response content as text so the same content string can be used
+for request-specific formatting, `FormatResponseAsync<T>`, and deserialization.
+
+By default:
+
+- `RestRequest.Body` values serialized by the library are captured in
+  `IRestResponse<T>.BodyString`.
+- Explicit `RestRequest.Content` / caller-supplied `HttpContent` is sent but is
+  not captured in `IRestResponse<T>.BodyString`.
+- Response content is captured in `IRestResponse<T>.Response.Content`.
+
+Capture behavior is configured once per client with `RestClient.Diagnostics`:
+
+- `CaptureSerializedRequestBody` controls capture of serialized
+  `RestRequest.Body` values.
+- `CaptureExplicitRequestContent` controls capture of explicit `HttpContent`.
+- `CaptureResponseContent` controls storage of response content on
+  `HttpResponse.Content`.
+- `MaxCapturedContentLength` limits stored diagnostic request/response strings by
+  character count.
+
+Enable `CaptureExplicitRequestContent` only intentionally because explicit
+`HttpContent` can contain credentials, token grant forms, PII, binary data, or
+stream/custom content. `MaxCapturedContentLength` limits only stored diagnostic
+strings returned to callers; it does not truncate the actual request content sent
+or the full response string used internally for formatting/deserialization. If
+`CaptureResponseContent` is false, response content is still read internally for
+`ExecuteAsync<T>` formatting/deserialization; it is just not stored on
+`HttpResponse.Content`.
+
+```csharp
+var client = new MyApiClient(httpClient);
+client.Diagnostics.CaptureExplicitRequestContent = true;
+client.Diagnostics.MaxCapturedContentLength = 20_000;
+```
+
 ## Current beta breaking changes
 
 This beta release continues the v3 API work and may still include breaking changes while the library is being finalized.
