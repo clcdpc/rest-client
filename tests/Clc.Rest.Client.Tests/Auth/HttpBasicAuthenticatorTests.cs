@@ -16,18 +16,17 @@ public class HttpBasicAuthenticatorTests
         string username = "user_name_with_🚀";
         string password = "password_with_€";
         var authenticator = new HttpBasicAuthenticator(username, password);
-        using var client = new HttpClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        authenticator.Authenticate(request);
 
         // Assert
-        Assert.IsNotNull(authenticatedRequest.Headers.Authorization);
-        Assert.AreEqual("Basic", authenticatedRequest.Headers.Authorization.Scheme);
+        Assert.IsNotNull(request.Headers.Authorization);
+        Assert.AreEqual("Basic", request.Headers.Authorization.Scheme);
 
         string expectedParameter = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
-        Assert.AreEqual(expectedParameter, authenticatedRequest.Headers.Authorization.Parameter);
+        Assert.AreEqual(expectedParameter, request.Headers.Authorization.Parameter);
     }
 
     [TestMethod]
@@ -37,17 +36,17 @@ public class HttpBasicAuthenticatorTests
         string username = "testuser";
         string password = "testpassword";
         var authenticator = new HttpBasicAuthenticator(username, password);
-        using var client = new HttpClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com");
 
         // Act
-        var authenticatedRequest = authenticator.Authenticate(client, request);
+        authenticator.Authenticate(request);
 
         // Assert
-        Assert.IsNotNull(authenticatedRequest.Headers.Authorization);
-        Assert.AreEqual("Basic", authenticatedRequest.Headers.Authorization.Scheme);
+        Assert.IsNotNull(request.Headers.Authorization);
+        Assert.AreEqual("Basic", request.Headers.Authorization.Scheme);
 
         string expectedParameter = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
-        Assert.AreEqual(expectedParameter, authenticatedRequest.Headers.Authorization.Parameter);
+        Assert.AreEqual(expectedParameter, request.Headers.Authorization.Parameter);
     }
+
 }
