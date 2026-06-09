@@ -4,7 +4,8 @@ A simple library for making REST requests.
 
 ## Framework support
 
-`Clc.Rest.Client` v3 alpha targets **.NET 8 (`net8.0`) only**. Consumers must run on .NET 8 or newer.
+`Clc.Rest.Client` is currently in beta and targets **.NET 8 (`net8.0`) only**. Consumers must run on .NET 8 or newer.
+The beta API may still change, including breaking changes, while the library is being finalized.
 
 
 ## HttpClient lifetime
@@ -31,9 +32,9 @@ proxy, custom certificates, custom TLS configuration, handlers, timeout policies
 resilience handlers, or diagnostics requires injecting an appropriately
 configured `HttpClient`.
 
-## 3.0.0-alpha.1 breaking changes
+## Current beta breaking changes
 
-This prerelease remains on the **alpha** line and introduces a .NET 8+ requirement.
+This beta release continues the v3 API work and may still include breaking changes while the library is being finalized.
 
 Execution uses one async method:
 
@@ -78,7 +79,7 @@ var formRequest = RestRequest.PostForm("/token", formValues);
 await client.ExecuteAsync<TokenDto>(formRequest, token);
 ```
 
-Removed or changed in this alpha:
+Removed or changed in this beta:
 
 - URL-only and method/url `ExecuteAsync` convenience overloads (use `RestRequest` factories)
 - context-dependent `Parameters` behavior (replaced by `QueryParameters` plus explicit `Content`/`PostForm`)
