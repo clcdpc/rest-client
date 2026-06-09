@@ -868,39 +868,43 @@ public class RestClientTests
             Serializer = serializer
         };
 
-        var response = await client.ExecuteAsync<string>(request, tokenSource.Token);
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(
+            async () => await client.ExecuteAsync<string>(request, tokenSource.Token));
 
-        Assert.IsInstanceOfType<OperationCanceledException>(response.Exception);
         Assert.IsFalse(authenticator.WasCalled);
         Assert.IsFalse(serializer.WasCalled);
         Assert.IsNull(handler.LastRequest);
     }
 
     [TestMethod]
-    public async Task ExecuteAsync_When_Cancelled_Before_Send_Captures_OperationCanceledException()
+    public async Task ExecuteAsync_When_Cancelled_Before_Send_Propagates_OperationCanceledException()
     {
         var tokenSource = new CancellationTokenSource();
         tokenSource.Cancel();
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), cancellationToken: tokenSource.Token);
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(
+            async () => await client.ExecuteAsync<string>(
+                RestRequest.Get("/data"),
+                cancellationToken: tokenSource.Token));
 
-        Assert.IsInstanceOfType<OperationCanceledException>(response.Exception);
         Assert.IsNull(handler.LastRequest);
     }
 
     [TestMethod]
-    public async Task ExecuteAsync_With_Body_When_Cancelled_Before_Send_Captures_OperationCanceledException()
+    public async Task ExecuteAsync_With_Body_When_Cancelled_Before_Send_Propagates_OperationCanceledException()
     {
         var tokenSource = new CancellationTokenSource();
         tokenSource.Cancel();
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
 
-        var response = await client.ExecuteAsync<string>(new RestRequest(HttpMethod.Post, "/data", body: new { Name = "Body" }), tokenSource.Token);
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(
+            async () => await client.ExecuteAsync<string>(
+                new RestRequest(HttpMethod.Post, "/data", body: new { Name = "Body" }),
+                tokenSource.Token));
 
-        Assert.IsInstanceOfType<OperationCanceledException>(response.Exception);
         Assert.IsNull(handler.LastRequest);
     }
 
@@ -1516,5 +1520,52 @@ public class RestClientTests
         Assert.IsInstanceOfType<ArgumentOutOfRangeException>(response.Exception);
         StringAssert.Contains(response.Exception.Message, "MaxCapturedContentLength");
         Assert.IsNull(response.Data);
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_Authenticator_Sees_Final_Uri_Headers_And_Content()
+    {
+        var authenticator = new InspectingAuthenticator();
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+
+        var request = RestRequest.Post(
+            "/items?existing=1",
+            new { Name = "Alice" },
+            new Dictionary<string, object> { ["q"] = "value" });
+
+        request.Headers["X-Test"] = "abc";
+        request.Authenticator = authenticator;
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsNull(response.Exception);
+        Assert.AreEqual("https://example.test/items?existing=1&q=value", authenticator.Uri);
+        Assert.AreEqual("abc", authenticator.HeaderValue);
+        Assert.IsTrue(authenticator.SawContent);
+        Assert.AreEqual("application/json; charset=utf-8", authenticator.ContentType);
+        Assert.AreEqual("{\"Name\":\"Alice\"}", await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken));
+    }
+
+    private sealed class InspectingAuthenticator : Clc.Rest.Auth.IAuthenticator
+    {
+        public string? Uri { get; private set; }
+        public string? HeaderValue { get; private set; }
+        public bool SawContent { get; private set; }
+        public string? ContentType { get; private set; }
+
+        public void Authenticate(HttpRequestMessage request)
+        {
+            Uri = request.RequestUri?.IsAbsoluteUri == true
+                ? request.RequestUri.AbsoluteUri
+                : request.RequestUri?.OriginalString;
+
+            HeaderValue = request.Headers.TryGetValues("X-Test", out var values)
+                ? values.SingleOrDefault()
+                : null;
+
+            SawContent = request.Content != null;
+            ContentType = request.Content?.Headers.ContentType?.ToString();
+        }
     }
 }

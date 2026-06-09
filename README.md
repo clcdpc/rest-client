@@ -80,6 +80,21 @@ client.Diagnostics.CaptureExplicitRequestContent = true;
 client.Diagnostics.MaxCapturedContentLength = 20_000;
 ```
 
+## Exception and cancellation behavior
+
+`ExecuteAsync<T>` uses a response-object error model for operational failures.
+Exceptions thrown while preparing the request, authenticating, serializing,
+sending, reading response content, formatting, or deserializing are captured in
+`IRestResponse<T>.Exception`.
+
+Caller-requested cancellation is different. If the supplied `CancellationToken`
+is canceled during `ExecuteAsync<T>`, `OperationCanceledException` is propagated
+instead of being captured in `IRestResponse<T>.Exception`.
+
+Callers should handle cancellation with normal async cancellation handling and
+check `response.Exception` for non-cancellation execution failures before using
+`response.Data` or `response.Response`.
+
 ## Current beta breaking changes
 
 This beta release continues the v3 API work and may still include breaking changes while the library is being finalized.
