@@ -76,4 +76,17 @@ public class RestClientExceptionTests
 
         Assert.IsNotNull(response.Exception);
     }
+
+    [TestMethod]
+    public async Task ExecuteAsync_When_FormatOutputAsync_Throws_Captures_Exception()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        var request = RestRequest.Get("/data");
+        request.FormatOutputAsync = (response, content, ct) => throw new InvalidOperationException("format fail");
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsInstanceOfType<InvalidOperationException>(response.Exception);
+    }
 }
