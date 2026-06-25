@@ -77,6 +77,32 @@ public class RestClientExceptionTests
         Assert.IsNotNull(response.Exception);
     }
 
+    private sealed class NullRequestUriRestClient : Clc.Rest.RestClient
+    {
+        public NullRequestUriRestClient(HttpClient client) : base(client) { }
+        protected override HttpRequestMessage CreateHttpRequestMessage(RestRequest request)
+        {
+            var msg = base.CreateHttpRequestMessage(request);
+            msg.RequestUri = null;
+            return msg;
+        }
+    }
+
+    [TestMethod]
+    public async Task ExecuteAsync_When_RequestUri_Is_Null_During_AddParameters_Captures_Exception()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = new NullRequestUriRestClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+        var request = RestRequest.Get("/data");
+        request.QueryParameters.Add("key", "value");
+
+        var response = await client.ExecuteAsync<string>(request, TestContext.CancellationToken);
+
+        Assert.IsInstanceOfType<InvalidOperationException>(response.Exception);
+        Assert.AreEqual("Request URI cannot be null.", response.Exception.Message);
+        Assert.IsNull(handler.LastRequest);
+    }
+
     [TestMethod]
     public async Task ExecuteAsync_When_FormatOutputAsync_Throws_Captures_Exception()
     {
