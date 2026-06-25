@@ -33,6 +33,7 @@ namespace Clc.Rest
         /// </remarks>
         public RestClientDiagnosticsOptions Diagnostics { get; } = new();
 
+        private static readonly HttpRequestOptionsKey<Uri> FinalRequestUriKey = new("RestClient.FinalRequestUri");
         private static readonly HttpClient SharedClient = CreateSharedClient();
 
         private readonly HttpClient _client;
@@ -264,8 +265,10 @@ namespace Clc.Rest
         /// <returns>The outgoing HTTP request message.</returns>
         protected virtual HttpRequestMessage CreateHttpRequestMessage(RestRequest request)
         {
-            var httpRequest = new HttpRequestMessage(request.Method, BuildRequestUri(request));
+            var requestUri = BuildRequestUri(request);
+            var httpRequest = new HttpRequestMessage(request.Method, requestUri);
             httpRequest.Headers.Accept.Add(Accept);
+            httpRequest.Options.Set(FinalRequestUriKey, requestUri);
             return httpRequest;
         }
 
@@ -322,6 +325,12 @@ namespace Clc.Rest
 
         protected virtual void AddParameters(RestRequest request, HttpRequestMessage httpRequest)
         {
+            if (httpRequest.Options.TryGetValue(FinalRequestUriKey, out var originalUri)
+                && ReferenceEquals(httpRequest.RequestUri, originalUri))
+            {
+                return;
+            }
+
             var queryString = BuildQueryString(request);
             if (string.IsNullOrEmpty(queryString))
             {
