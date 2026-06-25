@@ -12,7 +12,7 @@ public class RestClientDiagnosticsTests
     public required TestContext TestContext { get; set; }
 
     [TestMethod]
-    public async Task ExecuteAsync_Serialized_Request_BodyString_Is_Captured_By_Default()
+    public async Task ExecuteAsync_Serialized_Request_BodyString_Is_Not_Captured_By_Default()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
@@ -22,7 +22,7 @@ public class RestClientDiagnosticsTests
         var sentBody = await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken);
 
         Assert.IsNull(response.Exception);
-        Assert.AreEqual(expectedBody, response.BodyString);
+        Assert.IsNull(response.BodyString);
         Assert.AreEqual(expectedBody, sentBody);
     }
 
@@ -45,7 +45,7 @@ public class RestClientDiagnosticsTests
     }
 
     [TestMethod]
-    public async Task ExecuteAsync_Response_Content_Is_Captured_By_Default()
+    public async Task ExecuteAsync_Response_Content_Is_Not_Captured_By_Default()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{\"Name\":\"Alice\"}"));
         var client = CreateClient(handler);
@@ -54,7 +54,7 @@ public class RestClientDiagnosticsTests
 
         Assert.IsNull(response.Exception);
         Assert.IsNotNull(response.Response);
-        Assert.AreEqual("{\"Name\":\"Alice\"}", response.Response.Content);
+        Assert.IsNull(response.Response.Content);
         Assert.AreEqual("Alice", response.Data!.Name);
     }
 
@@ -97,33 +97,33 @@ public class RestClientDiagnosticsTests
     }
 
     [TestMethod]
-    public async Task ExecuteAsync_Serialized_Request_Body_Capture_Can_Be_Disabled()
+    public async Task ExecuteAsync_Serialized_Request_Body_Capture_Can_Be_Enabled()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
-        client.Diagnostics.CaptureSerializedRequestBody = false;
+        client.Diagnostics.CaptureSerializedRequestBody = true;
         var expectedBody = "{\"Name\":\"Alice\"}";
 
         var response = await client.ExecuteAsync<string>(RestRequest.Post("/post", new { Name = "Alice" }), TestContext.CancellationToken);
         var sentBody = await handler.LastRequest!.Content!.ReadAsStringAsync(TestContext.CancellationToken);
 
         Assert.IsNull(response.Exception);
-        Assert.IsNull(response.BodyString);
+        Assert.AreEqual(expectedBody, response.BodyString);
         Assert.AreEqual(expectedBody, sentBody);
     }
 
     [TestMethod]
-    public async Task ExecuteAsync_Response_Content_Capture_Can_Be_Disabled_Without_Breaking_Deserialization()
+    public async Task ExecuteAsync_Response_Content_Capture_Can_Be_Enabled_Without_Breaking_Deserialization()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("abcdefghijklmnopqrstuvwxyz"));
         var client = CreateClient(handler);
-        client.Diagnostics.CaptureResponseContent = false;
+        client.Diagnostics.CaptureResponseContent = true;
 
         var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
         Assert.IsNull(response.Exception);
         Assert.IsNotNull(response.Response);
-        Assert.IsNull(response.Response.Content);
+        Assert.AreEqual("abcdefghijklmnopqrstuvwxyz", response.Response.Content);
         Assert.AreEqual("abcdefghijklmnopqrstuvwxyz", response.Data);
     }
 
@@ -132,6 +132,7 @@ public class RestClientDiagnosticsTests
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureSerializedRequestBody = true;
         client.Diagnostics.MaxCapturedContentLength = 5;
         var expectedBody = "{\"Name\":\"Alice\"}";
 
@@ -149,6 +150,7 @@ public class RestClientDiagnosticsTests
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("abcdefghijklmnopqrstuvwxyz"));
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureResponseContent = true;
         client.Diagnostics.MaxCapturedContentLength = 5;
 
         var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
@@ -163,6 +165,8 @@ public class RestClientDiagnosticsTests
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("abcdefghijklmnopqrstuvwxyz"));
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureSerializedRequestBody = true;
+        client.Diagnostics.CaptureResponseContent = true;
         client.Diagnostics.MaxCapturedContentLength = 0;
 
         var response = await client.ExecuteAsync<string>(RestRequest.Post("/post", new { Name = "Alice" }), TestContext.CancellationToken);
@@ -178,6 +182,7 @@ public class RestClientDiagnosticsTests
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureSerializedRequestBody = true;
         client.Diagnostics.MaxCapturedContentLength = -1;
 
         var response = await client.ExecuteAsync<string>(RestRequest.Post("/post", new { Name = "Alice" }), TestContext.CancellationToken);
@@ -192,6 +197,7 @@ public class RestClientDiagnosticsTests
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("response-body"));
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureResponseContent = true;
         client.Diagnostics.MaxCapturedContentLength = -1;
 
         var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);

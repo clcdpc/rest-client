@@ -40,11 +40,11 @@ for request-specific formatting, `FormatResponseAsync<T>`, and deserialization.
 
 By default:
 
-- `RestRequest.Body` values serialized by the library are captured in
+- `RestRequest.Body` values serialized by the library are **not** captured in
   `IRestResponse<T>.BodyString`.
 - Explicit `RestRequest.Content` / caller-supplied `HttpContent` is sent but is
   not captured in `IRestResponse<T>.BodyString`.
-- Response content is captured in `IRestResponse<T>.Response.Content`.
+- Response content is **not** captured in `IRestResponse<T>.Response.Content`.
 
 Capture behavior is configured once per client with `RestClient.Diagnostics`:
 
