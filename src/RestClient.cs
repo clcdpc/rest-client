@@ -226,14 +226,30 @@ namespace Clc.Rest
                 return path;
             }
 
-            var segments = new[]
-            {
-                BaseUrl?.TrimEnd('/'),
-                PathPrefix?.Trim('/'),
-                path.TrimStart('/')
-            };
+            var baseUrl = BaseUrl?.TrimEnd('/');
+            var pathPrefix = PathPrefix?.Trim('/');
+            var requestPath = path.TrimStart('/');
 
-            return string.Join("/", segments.Where(segment => !string.IsNullOrWhiteSpace(segment)));
+            var hasBaseUrl = !string.IsNullOrWhiteSpace(baseUrl);
+            var hasPathPrefix = !string.IsNullOrWhiteSpace(pathPrefix);
+            var hasRequestPath = !string.IsNullOrWhiteSpace(requestPath);
+
+            if (hasBaseUrl && hasPathPrefix && hasRequestPath)
+                return $"{baseUrl}/{pathPrefix}/{requestPath}";
+            if (hasBaseUrl && hasPathPrefix)
+                return $"{baseUrl}/{pathPrefix}";
+            if (hasBaseUrl && hasRequestPath)
+                return $"{baseUrl}/{requestPath}";
+            if (hasPathPrefix && hasRequestPath)
+                return $"{pathPrefix}/{requestPath}";
+            if (hasBaseUrl)
+                return baseUrl!;
+            if (hasPathPrefix)
+                return pathPrefix!;
+            if (hasRequestPath)
+                return requestPath;
+
+            return string.Empty;
         }
 
         public virtual Uri BuildRequestUri(RestRequest request)
