@@ -94,4 +94,16 @@ public class HttpResponseTests
 
 		Assert.AreEqual("StatusCode: NoContent, Content-Type: , Content-Length: 0", result);
 	}
+
+	[TestMethod]
+	public void FormattedBody_CanBeSetAndRetrieved()
+	{
+		var expectedFormattedBody = "{\n  \"key\": \"value\"\n}";
+		var httpResponse = new HttpResponse
+		{
+			FormattedBody = expectedFormattedBody
+		};
+
+		Assert.AreEqual(expectedFormattedBody, httpResponse.FormattedBody);
+	}
 }
