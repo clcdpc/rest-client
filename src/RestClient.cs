@@ -350,7 +350,8 @@ namespace Clc.Rest
                 return string.Empty;
             }
 
-            var nonEmptyParameters = new List<string>(request.QueryParameters.Count);
+            StringBuilder? stringBuilder = null;
+
             foreach (var parameter in request.QueryParameters)
             {
                 if (string.IsNullOrWhiteSpace(parameter.Key) || parameter.Value == null)
@@ -364,10 +365,21 @@ namespace Clc.Rest
                     continue;
                 }
 
-                nonEmptyParameters.Add($"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(value)}");
+                if (stringBuilder == null)
+                {
+                    stringBuilder = new StringBuilder();
+                }
+                else
+                {
+                    stringBuilder.Append('&');
+                }
+
+                stringBuilder.Append(Uri.EscapeDataString(parameter.Key));
+                stringBuilder.Append('=');
+                stringBuilder.Append(Uri.EscapeDataString(value));
             }
 
-            return string.Join("&", nonEmptyParameters);
+            return stringBuilder?.ToString() ?? string.Empty;
         }
 
         private static string ConvertQueryParameterValue(object value)
