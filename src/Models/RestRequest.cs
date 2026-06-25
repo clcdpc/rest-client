@@ -63,7 +63,7 @@ namespace Clc.Rest.Models
             new RestRequest(HttpMethod.Put, path, body, queryParameters);
 
         public static RestRequest Patch(string path, object? body = null, Dictionary<string, object>? queryParameters = null) =>
-            new RestRequest(new HttpMethod("PATCH"), path, body, queryParameters);
+            new RestRequest(HttpMethod.Patch, path, body, queryParameters);
 
         public static RestRequest PostForm(string path, Dictionary<string, string>? formValues, Dictionary<string, object>? queryParameters = null) =>
             new RestRequest(HttpMethod.Post, path, null, queryParameters)
