@@ -36,9 +36,9 @@ namespace Clc.Rest.Models
 
         }
 
-        public RestResponse(T _data)
+        public RestResponse(T data)
         {
-            Data = _data;
+            Data = data;
         }
 
         /// <summary>
