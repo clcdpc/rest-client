@@ -426,4 +426,21 @@ public class RestClientRequestUriTests
 
         Assert.AreEqual(expected, result);
     }
+
+    [TestMethod]
+    [DataRow(null)]
+    [DataRow("")]
+    [DataRow(" ")]
+    public void BuildUrl_Handles_Empty_Request_Path(string? emptyPath)
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = CreateClient(handler);
+        client.BaseUrl = "https://api.example.com";
+        client.PathPrefix = "v1";
+
+        var request = new RestRequest(HttpMethod.Get, emptyPath!);
+        var result = client.BuildUrl(request);
+
+        Assert.AreEqual("https://api.example.com/v1", result);
+    }
 }
