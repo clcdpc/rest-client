@@ -1,4 +1,3 @@
-﻿using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -19,7 +18,7 @@ namespace Clc.Rest.Auth
         public void Authenticate(HttpRequestMessage request)
         {
             var byteArray = Encoding.UTF8.GetBytes($"{Username}:{Password}");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", System.Convert.ToBase64String(byteArray));
         }
     }
 }
