@@ -14,7 +14,7 @@ namespace Clc.Rest
         /// Gets or sets a value indicating whether serialized <c>RestRequest.Body</c>
         /// values are captured in <c>IRestResponse&lt;T&gt;.BodyString</c>.
         /// </summary>
-        public bool CaptureSerializedRequestBody { get; set; } = true;
+        public bool CaptureSerializedRequestBody { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether caller-supplied <see cref="System.Net.Http.HttpContent" />
@@ -26,7 +26,7 @@ namespace Clc.Rest
         /// Gets or sets a value indicating whether response content is captured in
         /// <c>HttpResponse.Content</c>.
         /// </summary>
-        public bool CaptureResponseContent { get; set; } = true;
+        public bool CaptureResponseContent { get; set; }
 
         /// <summary>
         /// Gets or sets the maximum number of characters stored in captured diagnostic content strings,

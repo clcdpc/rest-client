@@ -17,6 +17,7 @@ public class RestClientResponseContentTests
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("{\"message\":\"ok\"}"));
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureResponseContent = true;
 
         var response = await client.ExecuteAsync<Dictionary<string, string>>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
@@ -28,6 +29,7 @@ public class RestClientResponseContentTests
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse("plain-text"));
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureResponseContent = true;
 
         var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
@@ -55,6 +57,7 @@ public class RestClientResponseContentTests
         var payload = "{\"Name\":\"FromBody\"}";
         var handler = new FakeHttpMessageHandler(_ => JsonResponse(payload));
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureResponseContent = true;
 
         var response = await client.ExecuteAsync<Payload>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
@@ -68,6 +71,7 @@ public class RestClientResponseContentTests
         var content = new ThrowOnSecondReadContent("{\"Name\":\"Once\"}");
         var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureResponseContent = true;
 
         var response = await client.ExecuteAsync<Payload>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
@@ -82,6 +86,7 @@ public class RestClientResponseContentTests
         var content = new ThrowOnSecondReadContent("from formatter");
         var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureResponseContent = true;
         var request = new RestRequest(HttpMethod.Get, "/data");
         string capturedContent = string.Empty;
         CancellationToken capturedToken = default;
@@ -113,6 +118,7 @@ public class RestClientResponseContentTests
         };
         var handler = new FakeHttpMessageHandler(_ => responseMessage);
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureResponseContent = true;
 
         var response = await client.ExecuteAsync<Payload>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
@@ -132,6 +138,7 @@ public class RestClientResponseContentTests
 
         var handler = new FakeHttpMessageHandler(_ => responseMessage);
         var client = CreateClient(handler);
+        client.Diagnostics.CaptureResponseContent = true;
 
         var response = await client.ExecuteAsync<string>(RestRequest.Get("/data"), TestContext.CancellationToken);
 
