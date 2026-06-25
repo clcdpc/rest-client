@@ -43,11 +43,35 @@ public class RestClientHookTests
         Assert.AreEqual("new", response.Data!.Name);
     }
 
+    [TestMethod]
+    public async Task ExecuteAsync_Applies_PreformatRestRequest_To_Request()
+    {
+        var handler = new FakeHttpMessageHandler(_ => JsonResponse("{}"));
+        var client = new PreformatRestRequestTestRestClient(new HttpClient(handler)) { BaseUrl = "https://example.test" };
+
+        var request = RestRequest.Get("/data");
+        await client.ExecuteAsync<Payload>(request, TestContext.CancellationToken);
+
+        Assert.IsNotNull(handler.LastRequest);
+        Assert.AreEqual("/data-modified", handler.LastRequest.RequestUri?.AbsolutePath);
+        Assert.IsTrue(handler.LastRequest.Headers.Contains("X-Custom-Header"));
+    }
+
     private sealed class PreDeserializeTestRestClient(HttpClient client) : Clc.Rest.RestClient(client)
     {
         public override string PreDeserialize(string responseBody)
         {
             return responseBody.Replace("old", "new");
+        }
+    }
+
+    private sealed class PreformatRestRequestTestRestClient(HttpClient client) : Clc.Rest.RestClient(client)
+    {
+        public override RestRequest PreformatRestRequest(RestRequest request)
+        {
+            request.Path = request.Path + "-modified";
+            request.Headers["X-Custom-Header"] = "TestValue";
+            return request;
         }
     }
 }
